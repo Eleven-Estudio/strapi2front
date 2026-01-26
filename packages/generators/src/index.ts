@@ -18,5 +18,9 @@ export type { ClientGeneratorOptions } from './client/generator.js';
 export { generateLocales } from './locales/generator.js';
 export type { LocalesGeneratorOptions } from './locales/generator.js';
 
+// By-feature generator (screaming architecture)
+export { generateByFeature } from './by-feature/generator.js';
+export type { ByFeatureGeneratorOptions } from './by-feature/generator.js';
+
 // Utilities
 export * from './utils/index.js';

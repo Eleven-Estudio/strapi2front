@@ -129,6 +129,7 @@ export default defineConfig({
     types: "types",
     services: "services",
     actions: "actions/strapi",
+    structure: 'by-feature' // or 'by-layer'
   },
 
   // Features to generate

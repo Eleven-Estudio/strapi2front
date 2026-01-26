@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import pc from "picocolors";
-import { getFrameworkDisplayName, type Framework, type FrameworkInfo } from "../detectors/framework.js";
+import { getFrameworkDisplayName, type FrameworkInfo } from "../detectors/framework.js";
 import type { TypeScriptInfo } from "../detectors/typescript.js";
 import type { PackageManagerInfo } from "../detectors/package-manager.js";
 
@@ -47,12 +47,13 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
   const strapiUrlInput = await p.text({
     message: "What is your Strapi URL?",
     placeholder: `${defaultUrl} (press Enter for default)`,
-    validate: (value) => {
+    validate: (value): string | undefined => {
       const trimmed = (value || "").trim();
       // Allow empty (will use default)
-      if (trimmed === "") return;
+      if (trimmed === "") return undefined;
       try {
         new URL(trimmed);
+        return undefined;
       } catch {
         return "Please enter a valid URL";
       }

@@ -9,6 +9,7 @@ import { generateServices } from "@strapi-integrate/generators";
 import { generateActions } from "@strapi-integrate/generators";
 import { generateClient } from "@strapi-integrate/generators";
 import { generateLocales } from "@strapi-integrate/generators";
+import { generateByFeature } from "@strapi-integrate/generators";
 import { logger } from "../lib/utils/logger.js";
 
 export interface SyncCommandOptions {
@@ -43,67 +44,87 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     // Determine what to generate
     const generateAll = !options.typesOnly && !options.servicesOnly && !options.actionsOnly;
 
-    // Generate types
-    if (generateAll || options.typesOnly) {
-      if (config.features.types) {
-        s.start("Generating types...");
-        const typesPath = path.join(outputPath, config.output.types);
-        const files = await generateTypes(schema, { outputDir: typesPath });
-        generatedFiles.push(...files);
-        s.stop(`Generated ${files.length} type files`);
-      }
-    }
+    // Check structure mode
+    const isByFeature = config.output.structure === 'by-feature';
 
-    // Generate client (needed by services)
-    if (generateAll || options.servicesOnly) {
-      if (config.features.services) {
-        s.start("Generating client...");
-        const clientFiles = await generateClient({ outputDir: outputPath });
-        generatedFiles.push(...clientFiles);
-        s.stop("Generated client");
+    if (isByFeature) {
+      // Generate using by-feature structure (screaming architecture)
+      s.start("Generating files (by-feature structure)...");
+      const files = await generateByFeature(schema, rawSchema.locales, {
+        outputDir: outputPath,
+        features: {
+          types: config.features.types && (generateAll || Boolean(options.typesOnly)),
+          services: config.features.services && (generateAll || Boolean(options.servicesOnly)),
+          actions: config.features.actions && (generateAll || Boolean(options.actionsOnly)),
+        },
+      });
+      generatedFiles.push(...files);
+      s.stop(`Generated ${files.length} files`);
+    } else {
+      // Generate using by-layer structure (default)
 
-        // Generate locales (for i18n support)
-        s.start("Generating locales...");
-        const localesFiles = await generateLocales(rawSchema.locales, { outputDir: outputPath });
-        generatedFiles.push(...localesFiles);
-        if (rawSchema.locales.length > 0) {
-          s.stop(`Generated locales: ${rawSchema.locales.map(l => l.code).join(", ")}`);
-        } else {
-          s.stop("Generated locales (i18n not enabled in Strapi)");
+      // Generate types
+      if (generateAll || options.typesOnly) {
+        if (config.features.types) {
+          s.start("Generating types...");
+          const typesPath = path.join(outputPath, config.output.types);
+          const files = await generateTypes(schema, { outputDir: typesPath });
+          generatedFiles.push(...files);
+          s.stop(`Generated ${files.length} type files`);
         }
       }
-    }
 
-    // Generate services
-    if (generateAll || options.servicesOnly) {
-      if (config.features.services) {
-        s.start("Generating services...");
-        const servicesPath = path.join(outputPath, config.output.services);
-        const typesImportPath = path.relative(servicesPath, path.join(outputPath, config.output.types)).replace(/\\/g, "/") || ".";
-        const files = await generateServices(schema, {
-          outputDir: servicesPath,
-          typesImportPath: typesImportPath.startsWith(".") ? typesImportPath : "./" + typesImportPath,
-        });
-        generatedFiles.push(...files);
-        s.stop(`Generated ${files.length} service files`);
+      // Generate client (needed by services)
+      if (generateAll || options.servicesOnly) {
+        if (config.features.services) {
+          s.start("Generating client...");
+          const clientFiles = await generateClient({ outputDir: outputPath });
+          generatedFiles.push(...clientFiles);
+          s.stop("Generated client");
+
+          // Generate locales (for i18n support)
+          s.start("Generating locales...");
+          const localesFiles = await generateLocales(rawSchema.locales, { outputDir: outputPath });
+          generatedFiles.push(...localesFiles);
+          if (rawSchema.locales.length > 0) {
+            s.stop(`Generated locales: ${rawSchema.locales.map(l => l.code).join(", ")}`);
+          } else {
+            s.stop("Generated locales (i18n not enabled in Strapi)");
+          }
+        }
       }
-    }
 
-    // Generate actions
-    if (generateAll || options.actionsOnly) {
-      if (config.features.actions) {
-        s.start("Generating Astro actions...");
-        const actionsPath = path.join(outputPath, config.output.actions);
-        const servicesPath = path.join(outputPath, config.output.services);
+      // Generate services
+      if (generateAll || options.servicesOnly) {
+        if (config.features.services) {
+          s.start("Generating services...");
+          const servicesPath = path.join(outputPath, config.output.services);
+          const typesImportPath = path.relative(servicesPath, path.join(outputPath, config.output.types)).replace(/\\/g, "/") || ".";
+          const files = await generateServices(schema, {
+            outputDir: servicesPath,
+            typesImportPath: typesImportPath.startsWith(".") ? typesImportPath : "./" + typesImportPath,
+          });
+          generatedFiles.push(...files);
+          s.stop(`Generated ${files.length} service files`);
+        }
+      }
 
-        const servicesImportPath = path.relative(actionsPath, servicesPath).replace(/\\/g, "/") || ".";
+      // Generate actions
+      if (generateAll || options.actionsOnly) {
+        if (config.features.actions) {
+          s.start("Generating Astro actions...");
+          const actionsPath = path.join(outputPath, config.output.actions);
+          const servicesPath = path.join(outputPath, config.output.services);
 
-        const files = await generateActions(schema, {
-          outputDir: actionsPath,
-          servicesImportPath: servicesImportPath.startsWith(".") ? servicesImportPath : "./" + servicesImportPath,
-        });
-        generatedFiles.push(...files);
-        s.stop(`Generated ${files.length} action files`);
+          const servicesImportPath = path.relative(actionsPath, servicesPath).replace(/\\/g, "/") || ".";
+
+          const files = await generateActions(schema, {
+            outputDir: actionsPath,
+            servicesImportPath: servicesImportPath.startsWith(".") ? servicesImportPath : "./" + servicesImportPath,
+          });
+          generatedFiles.push(...files);
+          s.stop(`Generated ${files.length} action files`);
+        }
       }
     }
 
@@ -124,17 +145,17 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     p.outro(pc.green("Types and services are ready to use!"));
   } catch (error) {
     s.stop("Sync failed");
-    
+
     if (error instanceof Error) {
       logger.error(error.message);
-      
+
       if (error.message.includes("Could not find strapi.config")) {
         logger.info("Run \"npx strapi-integrate init\" first to set up your project.");
       }
     } else {
       logger.error("An unknown error occurred");
     }
-    
+
     process.exit(1);
   }
 }
