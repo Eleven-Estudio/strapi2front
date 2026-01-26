@@ -17,6 +17,8 @@ export const configSchema = z.object({
     types: z.string().default("types"),
     services: z.string().default("services"),
     actions: z.string().default("actions/strapi"),
+    // Output structure: 'by-layer' (types/, services/, actions/) or 'by-feature' (article/, category/)
+    structure: z.enum(["by-layer", "by-feature"]).default("by-feature"),
   }).default({}),
 
   // Features to generate
