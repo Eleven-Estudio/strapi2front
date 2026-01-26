@@ -57,7 +57,7 @@ function generateCollectionService(collection: CollectionType, typesImportPath: 
 
   // Build imports
   const imports: string[] = [
-    `import { strapi } from '../client';`,
+    `import { collection } from '../client';`,
     `import type { ${typeName}, ${typeName}Filters } from '${typesImportPath}/collections/${fileName}';`,
     `import type { StrapiPagination } from '${typesImportPath}/utils';`,
   ];
@@ -69,8 +69,14 @@ function generateCollectionService(collection: CollectionType, typesImportPath: 
   const findManyOptionsFields: string[] = [
     `  filters?: ${typeName}Filters;`,
     `  pagination?: {`,
+    `    /** Page number (1-indexed) - use with pageSize */`,
     `    page?: number;`,
+    `    /** Number of items per page (default: 25) - use with page */`,
     `    pageSize?: number;`,
+    `    /** Offset to start from (0-indexed) - use with limit */`,
+    `    start?: number;`,
+    `    /** Maximum number of items to return - use with start */`,
+    `    limit?: number;`,
     `  };`,
     `  sort?: string | string[];`,
     `  populate?: string | string[] | Record<string, unknown>;`,
@@ -145,12 +151,15 @@ export interface FindOneOptions {
 ${findOneOptionsFields.join('\n')}
 }
 
+// Create typed collection helper
+const ${toCamelCase(collection.singularName)}Collection = collection<${typeName}>('${endpoint}');
+
 export const ${serviceName} = {
   /**
    * Find multiple ${collection.pluralName}
    */
   async findMany(options: FindManyOptions = {}): Promise<{ data: ${typeName}[]; pagination: StrapiPagination }> {
-    const response = await strapi.collection<${typeName}>('${endpoint}').find({
+    const response = await ${toCamelCase(collection.singularName)}Collection.find({
 ${findParams.join('\n')}
     });
 
@@ -187,7 +196,7 @@ ${findParams.join('\n')}
    */
   async findOne(documentId: string, options: FindOneOptions = {}): Promise<${typeName} | null> {
     try {
-      const response = await strapi.collection<${typeName}>('${endpoint}').findOne(documentId, {
+      const response = await ${toCamelCase(collection.singularName)}Collection.findOne(documentId, {
 ${findOneParams.join('\n')}
       });
 
@@ -218,7 +227,7 @@ ${findBySlugParams.join('\n')}
    * Create a new ${collection.singularName}
    */
   async create(data: Partial<Omit<${typeName}, 'id' | 'documentId' | 'createdAt' | 'updatedAt' | 'publishedAt'>>): Promise<${typeName}> {
-    const response = await strapi.collection<${typeName}>('${endpoint}').create({ data });
+    const response = await ${toCamelCase(collection.singularName)}Collection.create({ data });
     return response.data;
   },
 
@@ -226,7 +235,7 @@ ${findBySlugParams.join('\n')}
    * Update a ${collection.singularName}
    */
   async update(documentId: string, data: Partial<Omit<${typeName}, 'id' | 'documentId' | 'createdAt' | 'updatedAt'>>): Promise<${typeName}> {
-    const response = await strapi.collection<${typeName}>('${endpoint}').update(documentId, { data });
+    const response = await ${toCamelCase(collection.singularName)}Collection.update(documentId, { data });
     return response.data;
   },
 
@@ -234,7 +243,7 @@ ${findBySlugParams.join('\n')}
    * Delete a ${collection.singularName}
    */
   async delete(documentId: string): Promise<void> {
-    await strapi.collection<${typeName}>('${endpoint}').delete(documentId);
+    await ${toCamelCase(collection.singularName)}Collection.delete(documentId);
   },
 
   /**
@@ -266,7 +275,7 @@ function generateSingleService(single: SingleType, typesImportPath: string): str
 
   // Build imports
   const imports: string[] = [
-    `import { strapi } from '../client';`,
+    `import { single } from '../client';`,
     `import type { ${typeName} } from '${typesImportPath}/collections/${fileName}';`,
   ];
   if (localized) {
@@ -307,13 +316,16 @@ export interface FindOptions {
 ${findOptionsFields.join('\n')}
 }
 
+// Create typed single helper
+const ${toCamelCase(single.singularName)}Single = single<${typeName}>('${endpoint}');
+
 export const ${serviceName} = {
   /**
    * Get ${single.displayName}
    */
   async find(options: FindOptions = {}): Promise<${typeName} | null> {
     try {
-      const response = await strapi.single<${typeName}>('${endpoint}').find({
+      const response = await ${toCamelCase(single.singularName)}Single.find({
 ${findParams.join('\n')}
       });
 
@@ -330,7 +342,7 @@ ${findParams.join('\n')}
    * Update ${single.displayName}
    */
   async update(data: Partial<Omit<${typeName}, 'id' | 'documentId' | 'createdAt' | 'updatedAt'>>): Promise<${typeName}> {
-    const response = await strapi.single<${typeName}>('${endpoint}').update({ data });
+    const response = await ${toCamelCase(single.singularName)}Single.update({ data });
     return response.data;
   },
 
@@ -338,7 +350,7 @@ ${findParams.join('\n')}
    * Delete ${single.displayName}
    */
   async delete(): Promise<void> {
-    await strapi.single<${typeName}>('${endpoint}').delete();
+    await ${toCamelCase(single.singularName)}Single.delete();
   },
 };
 `;

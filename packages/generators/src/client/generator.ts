@@ -37,12 +37,8 @@ function generateClientFile(): string {
 import Strapi from 'strapi-sdk-js';
 
 // Initialize the Strapi client
-const strapiUrl = import.meta.env.STRAPI_URL || process.env.STRAPI_URL;
+const strapiUrl = import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337';
 const strapiToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
-
-if (!strapiUrl) {
-  throw new Error('STRAPI_URL environment variable is required');
-}
 
 export const strapi = new Strapi({
   url: strapiUrl,
@@ -53,29 +49,60 @@ export const strapi = new Strapi({
   },
 });
 
+// Pagination type
+export interface StrapiPagination {
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  total: number;
+}
+
+// Default pagination for fallback
+const defaultPagination: StrapiPagination = {
+  page: 1,
+  pageSize: 25,
+  pageCount: 1,
+  total: 0,
+};
+
+// Response types
+interface StrapiListResponse<T> {
+  data: T[];
+  meta: {
+    pagination?: StrapiPagination;
+  };
+}
+
+interface StrapiSingleResponse<T> {
+  data: T;
+  meta?: Record<string, unknown>;
+}
+
 // Helper to get typed collection
 export function collection<T>(pluralName: string) {
   return {
-    async find(params?: Record<string, unknown>) {
-      const response = await strapi.find<T[]>(pluralName, params);
+    async find(params?: Record<string, unknown>): Promise<{ data: T[]; meta: { pagination: StrapiPagination } }> {
+      const response = await strapi.find(pluralName, params) as unknown as StrapiListResponse<T>;
       return {
-        data: response.data || [],
-        meta: response.meta || { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 0 } },
+        data: Array.isArray(response.data) ? response.data : [],
+        meta: {
+          pagination: response.meta?.pagination || defaultPagination,
+        },
       };
     },
-    async findOne(documentId: string, params?: Record<string, unknown>) {
-      const response = await strapi.findOne<T>(pluralName, documentId, params);
+    async findOne(documentId: string, params?: Record<string, unknown>): Promise<{ data: T }> {
+      const response = await strapi.findOne(pluralName, documentId, params) as unknown as StrapiSingleResponse<T>;
       return { data: response.data };
     },
-    async create(data: { data: Partial<T> }) {
-      const response = await strapi.create<T>(pluralName, data.data);
+    async create(data: { data: Partial<T> }): Promise<{ data: T }> {
+      const response = await strapi.create(pluralName, data.data as Record<string, unknown>) as unknown as StrapiSingleResponse<T>;
       return { data: response.data };
     },
-    async update(documentId: string, data: { data: Partial<T> }) {
-      const response = await strapi.update<T>(pluralName, documentId, data.data);
+    async update(documentId: string, data: { data: Partial<T> }): Promise<{ data: T }> {
+      const response = await strapi.update(pluralName, documentId, data.data as Record<string, unknown>) as unknown as StrapiSingleResponse<T>;
       return { data: response.data };
     },
-    async delete(documentId: string) {
+    async delete(documentId: string): Promise<void> {
       await strapi.delete(pluralName, documentId);
     },
   };
@@ -84,30 +111,18 @@ export function collection<T>(pluralName: string) {
 // Helper to get typed single type
 export function single<T>(singularName: string) {
   return {
-    async find(params?: Record<string, unknown>) {
-      const response = await strapi.find<T>(singularName, params);
+    async find(params?: Record<string, unknown>): Promise<{ data: T }> {
+      const response = await strapi.find(singularName, params) as unknown as StrapiSingleResponse<T>;
       return { data: response.data };
     },
-    async update(data: { data: Partial<T> }) {
-      const response = await strapi.update<T>(singularName, 1 as any, data.data);
+    async update(data: { data: Partial<T> }): Promise<{ data: T }> {
+      const response = await strapi.update(singularName, 1 as unknown as string, data.data as Record<string, unknown>) as unknown as StrapiSingleResponse<T>;
       return { data: response.data };
     },
-    async delete() {
-      await strapi.delete(singularName, 1 as any);
+    async delete(): Promise<void> {
+      await strapi.delete(singularName, 1 as unknown as string);
     },
   };
-}
-
-// Attach helpers to strapi instance
-strapi.collection = collection;
-strapi.single = single;
-
-// Extend the Strapi type
-declare module 'strapi-sdk-js' {
-  interface Strapi {
-    collection: typeof collection;
-    single: typeof single;
-  }
 }
 `;
 }
