@@ -1,0 +1,66 @@
+{
+  "name": "strapi-integrate",
+  "version": "0.1.0",
+  "description": "CLI for seamlessly integrating Strapi CMS with modern frontend frameworks",
+  "type": "module",
+  "bin": {
+    "strapi-integrate": "./dist/bin/strapi-integrate.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/bin/strapi-integrate.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "@strapi-integrate/client": "workspace:*",
+    "@strapi-integrate/core": "workspace:*",
+    "@strapi-integrate/generators": "workspace:*",
+    "commander": "^12.0.0",
+    "execa": "^8.0.0",
+    "fast-glob": "^3.3.0",
+    "ora": "^8.0.0",
+    "picocolors": "^1.0.0",
+    "pkg-types": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "strapi",
+    "cms",
+    "astro",
+    "nextjs",
+    "cli",
+    "typescript",
+    "code-generation"
+  ],
+  "license": "MIT",
+  "author": "Eleven Estudio <hello@eleven-estudio.dev>",
+  "homepage": "https://github.com/eleven-estudio/strapi-integrate#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eleven-estudio/strapi-integrate.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/eleven-estudio/strapi-integrate/issues"
+  }
+}

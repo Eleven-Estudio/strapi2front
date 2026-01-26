@@ -1,0 +1,40 @@
+{
+  "name": "strapi-integrate-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI for seamlessly integrating Strapi CMS with modern frontend frameworks",
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@types/node": "^20.10.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0",
+    "tsup": "^8.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "license": "MIT",
+  "author": "Eleven Estudio <hello@eleven-estudio.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eleven-estudio/strapi-integrate.git"
+  }
+}
