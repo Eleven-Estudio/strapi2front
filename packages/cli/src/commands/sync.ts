@@ -4,8 +4,9 @@ import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { loadConfig } from "@strapi-integrate/core";
-import { fetchSchema } from "@strapi-integrate/core";
+import { fetchSchema, detectStrapiVersion } from "@strapi-integrate/core";
 import { parseSchema } from "@strapi-integrate/core";
+import type { StrapiVersion } from "@strapi-integrate/core";
 import type { ParsedSchema, Attribute } from "@strapi-integrate/core";
 import { generateTypes } from "@strapi-integrate/generators";
 import { generateServices } from "@strapi-integrate/generators";
@@ -108,8 +109,39 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
   try {
     // Load configuration
     s.start("Loading configuration...");
-    const config = await loadConfig(cwd);
+    let config = await loadConfig(cwd);
     s.stop("Configuration loaded");
+
+    // Detect and validate Strapi version
+    s.start("Detecting Strapi version...");
+    const versionResult = await detectStrapiVersion(config.url, config.token);
+    s.stop("Version detection complete");
+
+    let effectiveVersion: StrapiVersion = config.strapiVersion;
+
+    if (versionResult.detected) {
+      if (versionResult.detected !== config.strapiVersion) {
+        // Version mismatch detected
+        if (versionResult.detected === "v5" && config.strapiVersion === "v4") {
+          p.log.warn(
+            pc.yellow(`Detected Strapi ${pc.bold("v5")} but config has ${pc.bold("v4")}. Using v5.`)
+          );
+          effectiveVersion = "v5";
+        } else if (versionResult.detected === "v4" && config.strapiVersion === "v5") {
+          p.log.warn(
+            pc.yellow(`Detected Strapi ${pc.bold("v4")} but config has ${pc.bold("v5")}. Using v4.`)
+          );
+          effectiveVersion = "v4";
+        }
+      } else {
+        p.log.info(`Strapi ${pc.green(pc.bold(config.strapiVersion))}`);
+      }
+    } else {
+      p.log.warn(pc.yellow(`Could not detect Strapi version. Using ${pc.bold(config.strapiVersion)}`));
+    }
+
+    // Update config with effective version for this sync
+    config = { ...config, strapiVersion: effectiveVersion };
 
     // Fetch schema from Strapi
     s.start("Fetching schema from Strapi...");

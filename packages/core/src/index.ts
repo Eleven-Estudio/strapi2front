@@ -4,7 +4,8 @@ export { configSchema } from "./config/schema.js";
 export type { StrapiIntegrateConfig } from "./config/schema.js";
 
 // Schema exports
-export { fetchSchema, testConnection } from "./schema/fetcher.js";
+export { fetchSchema, testConnection, detectStrapiVersion } from "./schema/fetcher.js";
+export type { StrapiVersion, VersionDetectionResult } from "./schema/fetcher.js";
 export { parseSchema, uidToIdentifier, toPascalCase, toCamelCase, toKebabCase } from "./schema/parser.js";
 export type {
   StrapiSchema,

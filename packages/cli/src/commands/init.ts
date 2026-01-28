@@ -47,7 +47,13 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
   try {
     // Create strapi.config.ts
-    const configContent = generateConfigFile(answers);
+    const configContent = generateConfigFile({
+      strapiUrl: answers.strapiUrl,
+      strapiVersion: answers.strapiVersion,
+      outputDir: answers.outputDir,
+      generateActions: answers.generateActions,
+      generateServices: answers.generateServices,
+    });
     const configPath = path.join(cwd, "strapi.config.ts");
     await fs.writeFile(configPath, configContent, "utf-8");
 
@@ -112,6 +118,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
 function generateConfigFile(answers: {
   strapiUrl: string;
+  strapiVersion: "v4" | "v5";
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
@@ -139,8 +146,8 @@ export default defineConfig({
     actions: ${answers.generateActions},
   },
 
-  // Strapi version (v5 by default)
-  strapiVersion: "v5",
+  // Strapi version
+  strapiVersion: "${answers.strapiVersion}",
 });
 `;
 }

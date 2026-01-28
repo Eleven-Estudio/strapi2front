@@ -13,6 +13,7 @@ export interface DetectionResults {
 export interface InitPromptAnswers {
   strapiUrl: string;
   strapiToken: string;
+  strapiVersion: "v4" | "v5";
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
@@ -86,6 +87,23 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     p.log.info(pc.dim("Token skipped. Remember to add STRAPI_TOKEN to your .env file later."));
   }
 
+  // Strapi version
+  const strapiVersion = await p.select({
+    message: "What version of Strapi are you using?",
+    options: [
+      { value: "v5", label: "Strapi v5", hint: "Recommended - Latest version" },
+      { value: "v4", label: "Strapi v4", hint: "Legacy version" },
+    ],
+    initialValue: "v5",
+  });
+
+  if (p.isCancel(strapiVersion)) {
+    p.cancel("Setup cancelled");
+    return null;
+  }
+
+  p.log.info(pc.dim(`Using Strapi ${strapiVersion}. This can be changed later in strapi.config.ts`));
+
   // Output directory
   const outputDir = await p.text({
     message: "Where should we generate the Strapi files?",
@@ -118,6 +136,7 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
   return {
     strapiUrl: strapiUrl,
     strapiToken: trimmedToken,
+    strapiVersion: strapiVersion as "v4" | "v5",
     outputDir: ((outputDir as string) || "").trim() || "src/strapi",
     generateActions: (features as string[]).includes("actions"),
     generateServices: (features as string[]).includes("services"),

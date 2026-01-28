@@ -95,6 +95,126 @@ export async function fetchSchema(
   };
 }
 
+export type StrapiVersion = "v4" | "v5";
+
+export interface VersionDetectionResult {
+  detected: StrapiVersion | null;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+}
+
+/**
+ * Detect Strapi version by analyzing content types unique to each version.
+ *
+ * V5-exclusive content types:
+ * - plugin::content-releases.release
+ * - plugin::content-releases.release-action
+ * - plugin::review-workflows.workflow
+ * - plugin::review-workflows.workflow-stage
+ * - admin::session
+ *
+ * V5-exclusive attributes:
+ * - entryDocumentId in plugin::content-releases.release-action
+ */
+export async function detectStrapiVersion(
+  url: string,
+  token?: string
+): Promise<VersionDetectionResult> {
+  const baseUrl = normalizeUrl(url);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/content-type-builder/content-types`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      return {
+        detected: null,
+        confidence: "low",
+        reason: `Could not fetch schema: ${response.status}`,
+      };
+    }
+
+    const data = await response.json() as ContentTypesApiResponse;
+    const contentTypes = data.data || [];
+
+    if (contentTypes.length === 0) {
+      return {
+        detected: null,
+        confidence: "low",
+        reason: "No content types found in schema",
+      };
+    }
+
+    // V5-exclusive content type UIDs
+    const v5ExclusiveUids = [
+      "plugin::content-releases.release",
+      "plugin::content-releases.release-action",
+      "plugin::review-workflows.workflow",
+      "plugin::review-workflows.workflow-stage",
+      "admin::session",
+    ];
+
+    // Check for V5-exclusive content types
+    const contentTypeUids = contentTypes.map((ct) => ct.uid);
+    const foundV5ContentType = v5ExclusiveUids.find((uid) => contentTypeUids.includes(uid));
+
+    if (foundV5ContentType) {
+      return {
+        detected: "v5",
+        confidence: "high",
+        reason: `Found v5-exclusive content type: ${foundV5ContentType}`,
+      };
+    }
+
+    // Check for entryDocumentId attribute (v5 exclusive)
+    const releaseAction = contentTypes.find((ct) => ct.uid === "plugin::content-releases.release-action");
+    if (releaseAction?.schema?.attributes && "entryDocumentId" in releaseAction.schema.attributes) {
+      return {
+        detected: "v5",
+        confidence: "high",
+        reason: "Found entryDocumentId attribute (Strapi v5 feature)",
+      };
+    }
+
+    // If none of the v5-exclusive features are found, it's v4
+    // Check for typical v4 content types to confirm
+    const hasV4AdminTypes = contentTypeUids.includes("admin::permission") &&
+                           contentTypeUids.includes("admin::user") &&
+                           !contentTypeUids.includes("admin::session");
+
+    if (hasV4AdminTypes) {
+      return {
+        detected: "v4",
+        confidence: "high",
+        reason: "No v5-exclusive content types found, confirmed v4 structure",
+      };
+    }
+
+    // Fallback - assume v4 since it's the legacy version
+    return {
+      detected: "v4",
+      confidence: "medium",
+      reason: "Could not find v5-specific features, assuming v4",
+    };
+  } catch (error) {
+    return {
+      detected: null,
+      confidence: "low",
+      reason: error instanceof Error ? error.message : "Detection failed",
+    };
+  }
+}
+
 /**
  * Test connection to Strapi
  */
