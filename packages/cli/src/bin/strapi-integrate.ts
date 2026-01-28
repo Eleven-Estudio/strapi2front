@@ -41,6 +41,7 @@ program
   .option('--types-only', 'Only generate types')
   .option('--services-only', 'Only generate services')
   .option('--actions-only', 'Only generate actions')
+  .option('--clean', 'Automatically remove orphaned files from previous structure')
   .action(syncCommand);
 
 // Parse args

@@ -92,11 +92,70 @@ function installPackage(packageName: string, cwd: string): void {
   execSync(commands[pm], { cwd, stdio: "inherit" });
 }
 
+/**
+ * Structure type for output organization
+ */
+type OutputStructure = "by-layer" | "by-feature";
+
+/**
+ * Get orphaned folders from the opposite structure
+ */
+function getOrphanedFolders(outputPath: string, currentStructure: OutputStructure): string[] {
+  const orphanedFolders: string[] = [];
+
+  if (currentStructure === "by-feature") {
+    // If using by-feature, check for by-layer folders
+    const byLayerFolders = ["types", "services", "actions"];
+    for (const folder of byLayerFolders) {
+      const folderPath = path.join(outputPath, folder);
+      if (fs.existsSync(folderPath)) {
+        orphanedFolders.push(folder);
+      }
+    }
+    // Also check for root-level client.ts and locales.ts (by-layer puts them at root)
+    if (fs.existsSync(path.join(outputPath, "client.ts"))) {
+      orphanedFolders.push("client.ts");
+    }
+    if (fs.existsSync(path.join(outputPath, "locales.ts"))) {
+      orphanedFolders.push("locales.ts");
+    }
+  } else {
+    // If using by-layer, check for by-feature folders
+    const byFeatureFolders = ["collections", "singles", "shared", "components"];
+    for (const folder of byFeatureFolders) {
+      const folderPath = path.join(outputPath, folder);
+      if (fs.existsSync(folderPath)) {
+        orphanedFolders.push(folder);
+      }
+    }
+  }
+
+  return orphanedFolders;
+}
+
+/**
+ * Remove orphaned folders/files
+ */
+function cleanOrphanedFiles(outputPath: string, orphanedItems: string[]): void {
+  for (const item of orphanedItems) {
+    const itemPath = path.join(outputPath, item);
+    if (fs.existsSync(itemPath)) {
+      const stat = fs.statSync(itemPath);
+      if (stat.isDirectory()) {
+        fs.rmSync(itemPath, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(itemPath);
+      }
+    }
+  }
+}
+
 export interface SyncCommandOptions {
   force?: boolean;
   typesOnly?: boolean;
   servicesOnly?: boolean;
   actionsOnly?: boolean;
+  clean?: boolean;
 }
 
 export async function syncCommand(options: SyncCommandOptions): Promise<void> {
@@ -189,6 +248,44 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
 
     // Check structure mode
     const isByFeature = config.output.structure === 'by-feature';
+    const currentStructure: OutputStructure = isByFeature ? "by-feature" : "by-layer";
+
+    // Check for orphaned files from previous structure
+    if (fs.existsSync(outputPath)) {
+      const orphanedFolders = getOrphanedFolders(outputPath, currentStructure);
+
+      if (orphanedFolders.length > 0) {
+        const otherStructure = isByFeature ? "by-layer" : "by-feature";
+        p.log.warn(
+          pc.yellow(`Found files from previous ${pc.bold(otherStructure)} structure:`)
+        );
+        p.log.message(pc.dim(`  ${orphanedFolders.join(", ")}`));
+
+        let shouldClean = options.clean;
+
+        if (!shouldClean) {
+          const cleanResponse = await p.confirm({
+            message: `Remove orphaned ${otherStructure} files?`,
+            initialValue: true,
+          });
+
+          if (p.isCancel(cleanResponse)) {
+            p.cancel("Sync cancelled");
+            process.exit(0);
+          }
+
+          shouldClean = cleanResponse;
+        }
+
+        if (shouldClean) {
+          s.start("Cleaning orphaned files...");
+          cleanOrphanedFiles(outputPath, orphanedFolders);
+          s.stop(`Removed: ${orphanedFolders.join(", ")}`);
+        } else {
+          p.log.info(pc.dim("Keeping orphaned files. You can clean them manually or use --clean flag."));
+        }
+      }
+    }
 
     if (isByFeature) {
       // Generate using by-feature structure (screaming architecture)
