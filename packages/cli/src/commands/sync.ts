@@ -1,9 +1,12 @@
 import * as p from "@clack/prompts";
 import pc from "picocolors";
 import path from "node:path";
+import fs from "node:fs";
+import { execSync } from "node:child_process";
 import { loadConfig } from "@strapi-integrate/core";
 import { fetchSchema } from "@strapi-integrate/core";
 import { parseSchema } from "@strapi-integrate/core";
+import type { ParsedSchema, Attribute } from "@strapi-integrate/core";
 import { generateTypes } from "@strapi-integrate/generators";
 import { generateServices } from "@strapi-integrate/generators";
 import { generateActions } from "@strapi-integrate/generators";
@@ -11,6 +14,82 @@ import { generateClient } from "@strapi-integrate/generators";
 import { generateLocales } from "@strapi-integrate/generators";
 import { generateByFeature } from "@strapi-integrate/generators";
 import { logger } from "../lib/utils/logger.js";
+
+const BLOCKS_RENDERER_PACKAGE = "@strapi/blocks-react-renderer";
+
+/**
+ * Check if schema contains any blocks fields
+ */
+function schemaHasBlocks(schema: ParsedSchema): { hasBlocks: boolean; fieldsFound: string[] } {
+  const fieldsFound: string[] = [];
+
+  const checkAttributes = (typeName: string, attributes: Record<string, Attribute>): void => {
+    for (const [fieldName, attr] of Object.entries(attributes)) {
+      if (attr.type === "blocks") {
+        fieldsFound.push(`${typeName}.${fieldName}`);
+      }
+    }
+  };
+
+  for (const collection of schema.collections) {
+    checkAttributes(collection.singularName, collection.attributes);
+  }
+
+  for (const single of schema.singles) {
+    checkAttributes(single.singularName, single.attributes);
+  }
+
+  for (const component of schema.components) {
+    checkAttributes(`component:${component.name}`, component.attributes);
+  }
+
+  return { hasBlocks: fieldsFound.length > 0, fieldsFound };
+}
+
+/**
+ * Check if a package is installed
+ */
+function isPackageInstalled(packageName: string, cwd: string): boolean {
+  try {
+    const packageJsonPath = path.join(cwd, "package.json");
+    if (!fs.existsSync(packageJsonPath)) return false;
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    const deps = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies,
+    };
+
+    return packageName in deps;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Detect package manager
+ */
+function detectPackageManager(cwd: string): "npm" | "yarn" | "pnpm" | "bun" {
+  if (fs.existsSync(path.join(cwd, "bun.lockb"))) return "bun";
+  if (fs.existsSync(path.join(cwd, "pnpm-lock.yaml"))) return "pnpm";
+  if (fs.existsSync(path.join(cwd, "yarn.lock"))) return "yarn";
+  return "npm";
+}
+
+/**
+ * Install a package
+ */
+function installPackage(packageName: string, cwd: string): void {
+  const pm = detectPackageManager(cwd);
+  const commands: Record<string, string> = {
+    npm: `npm install ${packageName}`,
+    yarn: `yarn add ${packageName}`,
+    pnpm: `pnpm add ${packageName}`,
+    bun: `bun add ${packageName}`,
+  };
+
+  execSync(commands[pm], { cwd, stdio: "inherit" });
+}
 
 export interface SyncCommandOptions {
   force?: boolean;
@@ -38,6 +117,38 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     const schema = parseSchema(rawSchema);
     s.stop(`Schema fetched: ${schema.collections.length} collections, ${schema.singles.length} singles, ${schema.components.length} components`);
 
+    // Check for Blocks fields and prompt for renderer package
+    let blocksRendererInstalled = isPackageInstalled(BLOCKS_RENDERER_PACKAGE, cwd);
+    const { hasBlocks: hasBlocksFields, fieldsFound: blocksFieldsFound } = schemaHasBlocks(schema);
+
+    if (hasBlocksFields && !blocksRendererInstalled) {
+      p.log.info(`Blocks fields detected: ${pc.cyan(blocksFieldsFound.join(", "))}`);
+
+      const installBlocks = await p.confirm({
+        message: `Install ${pc.cyan(BLOCKS_RENDERER_PACKAGE)} for proper type support and rendering?`,
+        initialValue: true,
+      });
+
+      if (p.isCancel(installBlocks)) {
+        p.cancel("Sync cancelled");
+        process.exit(0);
+      }
+
+      if (installBlocks) {
+        s.start(`Installing ${BLOCKS_RENDERER_PACKAGE}...`);
+        try {
+          installPackage(BLOCKS_RENDERER_PACKAGE, cwd);
+          blocksRendererInstalled = true;
+          s.stop(`${BLOCKS_RENDERER_PACKAGE} installed`);
+        } catch (error) {
+          s.stop(`Failed to install ${BLOCKS_RENDERER_PACKAGE}`);
+          logger.warn("You can install it manually later and re-run sync");
+        }
+      } else {
+        p.log.info(pc.dim(`Skipping ${BLOCKS_RENDERER_PACKAGE}. BlocksContent will be typed as unknown[]`));
+      }
+    }
+
     const outputPath = path.join(cwd, config.output.path);
     const generatedFiles: string[] = [];
 
@@ -57,6 +168,8 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
           services: config.features.services && (generateAll || Boolean(options.servicesOnly)),
           actions: config.features.actions && (generateAll || Boolean(options.actionsOnly)),
         },
+        blocksRendererInstalled,
+        strapiVersion: config.strapiVersion,
       });
       generatedFiles.push(...files);
       s.stop(`Generated ${files.length} files`);
@@ -68,7 +181,11 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
         if (config.features.types) {
           s.start("Generating types...");
           const typesPath = path.join(outputPath, config.output.types);
-          const files = await generateTypes(schema, { outputDir: typesPath });
+          const files = await generateTypes(schema, {
+            outputDir: typesPath,
+            blocksRendererInstalled,
+            strapiVersion: config.strapiVersion,
+          });
           generatedFiles.push(...files);
           s.stop(`Generated ${files.length} type files`);
         }
@@ -78,7 +195,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       if (generateAll || options.servicesOnly) {
         if (config.features.services) {
           s.start("Generating client...");
-          const clientFiles = await generateClient({ outputDir: outputPath });
+          const clientFiles = await generateClient({ outputDir: outputPath, strapiVersion: config.strapiVersion });
           generatedFiles.push(...clientFiles);
           s.stop("Generated client");
 
@@ -103,6 +220,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
           const files = await generateServices(schema, {
             outputDir: servicesPath,
             typesImportPath: typesImportPath.startsWith(".") ? typesImportPath : "./" + typesImportPath,
+            strapiVersion: config.strapiVersion,
           });
           generatedFiles.push(...files);
           s.stop(`Generated ${files.length} service files`);
@@ -121,6 +239,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
           const files = await generateActions(schema, {
             outputDir: actionsPath,
             servicesImportPath: servicesImportPath.startsWith(".") ? servicesImportPath : "./" + servicesImportPath,
+            strapiVersion: config.strapiVersion,
           });
           generatedFiles.push(...files);
           s.stop(`Generated ${files.length} action files`);
