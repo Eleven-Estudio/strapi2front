@@ -1,0 +1,94 @@
+---
+import Bun from './bun.astro';
+import Npm from './npm.astro';
+import Pnpm from './pnpm.astro';
+import Yarn from './yarn.astro';
+import ButtonCopy from './button-copy.astro';
+import { cn } from '@/lib/utils';
+
+type PACKAGES_MANAGERS = 'npm' | 'pnpm' | 'yarn' | 'bun';
+
+interface Packages {
+  id: PACKAGES_MANAGERS;
+  name: string;
+  icon: any;
+  command: string;
+}
+
+interface Props {
+  commands: {
+    npm: string;
+    pnpm: string;
+    yarn: string;
+    bun: string;
+  };
+  defaultPm?: PACKAGES_MANAGERS;
+}
+
+const { commands, defaultPm = 'pnpm' } = Astro.props;
+
+const packagesManagersMap: Record<PACKAGES_MANAGERS, Packages> = {
+  npm: { id: 'npm', name: 'npm', icon: Npm, command: commands.npm },
+  pnpm: { id: 'pnpm', name: 'pnpm', icon: Pnpm, command: commands.pnpm },
+  yarn: { id: 'yarn', name: 'yarn', icon: Yarn, command: commands.yarn },
+  bun: { id: 'bun', name: 'bun', icon: Bun, command: commands.bun },
+};
+
+const packagesManagers = Object.values(packagesManagersMap);
+const defaultPmConfig = packagesManagersMap[defaultPm];
+const pmsSorteds = [defaultPmConfig, ...packagesManagers.filter((pm) => pm.id !== defaultPm)];
+---
+
+<style>
+  @reference "../assets/css/global.css";
+
+  .tab-pm-list li button {
+    @apply py-1.5 px-3 sm:px-4 inline-flex items-center gap-x-2 sm:gap-x-3 font-medium text-[#90A1B9] text-xs sm:text-base hover:bg-neutral-800 cursor-pointer transition-colors;
+  }
+
+  .tab-pm-list li button.active {
+    @apply text-white bg-white/5;
+  }
+</style>
+
+<div class="bg-[#000000]/40 border border-white/10 p-1.5 max-w-3xl w-full mx-auto" role="tabpanel">
+  <div class="flex items-center justify-between gap-3 px-1 sm:px-5 pt-0 pb-1.5 sm:pt-2 sm:pb-3.5 border-b border-white/10">
+    <ul role="tablist" class="flex flex-wrap items-center gap-x-1 tab-pm-list">
+      {
+        pmsSorteds.map((pm) => {
+          return (
+            <li role="tab">
+              <button
+                id={pm.id}
+                data-command={pm.command}
+                class={cn([{ active: pm.id === defaultPm }])}
+              >
+                <pm.icon class="w-4 sm:h-4.5 h-4 sm:w-4.5" />
+                {pm.name}
+              </button>
+            </li>
+          );
+        })
+      }
+    </ul>
+    <ButtonCopy target="#text-command" />
+  </div>
+  <div class="pb-3 pt-4 sm:pb-5 sm:pt-6 px-1 sm:px-5 text-sm sm:text-base inline-flex gap-x-2 sm:gap-x-3 items-center w-full">
+    <span class="text-[#3AF6D6] select-none" role="none" aria-hidden="true">$</span>
+    <p id="text-command" class="text-[#E2E8F0]">{commands[defaultPm]}</p>
+  </div>
+</div>
+
+<script>
+  const $packagesManagers = document.querySelectorAll<HTMLButtonElement>('.tab-pm-list li button');
+  const $textCommand = document.getElementById('text-command');
+
+  $packagesManagers.forEach(($pm) => {
+    $pm.addEventListener('click', () => {
+      const commandByPm = $pm.dataset['command'] ?? '';
+      $packagesManagers.forEach(($other) => $other.classList.remove('active'));
+      $pm.classList.add('active');
+      if ($textCommand) $textCommand.textContent = commandByPm;
+    });
+  });
+</script>

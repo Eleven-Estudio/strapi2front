@@ -1,0 +1,36 @@
+---
+import '@/assets/css/global.css';
+import Seo, { type SEOProps } from '@/components/fundations/seo.astro';
+import Meta from '@/components/fundations/meta.astro';
+import Favicons from '@/components/fundations/favicons.astro';
+// import GtmNoscript from '@/components/gtm-noscript.astro';
+import TailwindIndicator from '@/components/tailwind-indicator.astro';
+import { Font } from 'astro:assets';
+
+interface Props {
+  metadata?: SEOProps;
+}
+
+const { metadata } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" class:list={['scroll-smooth', 'bg-website-bg']}>
+  <head>
+    <Meta />
+    <Seo {...metadata} />
+    <Favicons />
+    <Font cssVariable="--font-geist" preload />
+    <style>
+      body {
+        font-family: var(--font-geist);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <GtmNoscript /> -->
+    <slot />
+    <TailwindIndicator />
+    <script src="@/scripts/eleven.ts"></script>
+  </body>
+</html>

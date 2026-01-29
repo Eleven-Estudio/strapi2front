@@ -1,0 +1,74 @@
+---
+import Check from './icons/check.astro';
+import Copy from './icons/copy.astro';
+
+interface Props {
+  /** Selector CSS del elemento cuyo textContent se copiará */
+  target: string;
+  class?: string;
+}
+
+const { target, class: className } = Astro.props;
+---
+
+<button
+  class:list={[
+    'hover:bg-neutral-900 cursor-pointer active:scale-[.97] transition-all duration touch-hitbox btn-copy h-8 w-8 aspect-square relative',
+    className,
+  ]}
+  aria-label="Copy to clipboard"
+  data-copy-target={target}
+>
+  <Copy
+    class="h-5 w-5 copy-icon absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 will-change-transform ease-out"
+  />
+  <Check
+    class="h-5 w-5 stroke-green-400 check-icon absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 duration-300 transition-all will-change-transform ease-out"
+  />
+  <span
+    role="tooltip"
+    class="absolute text-green-700 text-xs left-0 top-1/2 -translate-x-full -translate-y-1/2 opacity-0 transition-opacity text-copy hidden md:inline"
+    >Copy!</span
+  >
+</button>
+
+<script>
+  function initCopyButtons() {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('.btn-copy[data-copy-target]');
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const targetSelector = btn.dataset.copyTarget;
+        if (!targetSelector) return;
+
+        const targetEl = document.querySelector(targetSelector);
+        const textToCopy = targetEl?.textContent ?? '';
+
+        await navigator.clipboard.writeText(textToCopy);
+
+        const $textCopy = btn.querySelector<HTMLSpanElement>('.text-copy');
+        const iconCopy = btn.querySelector<HTMLElement>('.copy-icon');
+        const iconCheck = btn.querySelector<HTMLElement>('.check-icon');
+
+        if (iconCopy && iconCheck && $textCopy) {
+          $textCopy.style.opacity = '1';
+          iconCheck.style.opacity = '1';
+          iconCopy.style.opacity = '0';
+          iconCopy.style.filter = 'blur(4px)';
+          iconCheck.style.filter = 'blur(0)';
+
+          setTimeout(() => {
+            $textCopy.style.opacity = '0';
+            iconCheck.style.opacity = '0';
+            iconCheck.style.filter = 'blur(4px)';
+            iconCopy.style.opacity = '1';
+            iconCopy.style.filter = 'blur(0)';
+          }, 2000);
+        }
+      });
+    });
+  }
+
+  initCopyButtons();
+  document.addEventListener('astro:after-swap', initCopyButtons);
+</script>

@@ -1,0 +1,66 @@
+---
+import { type AstroSeoProps, AstroSeo } from '@astrolib/seo';
+
+export interface SEOProps extends AstroSeoProps {
+  ignoreTitleTemplate?: boolean;
+}
+
+interface Props extends SEOProps {}
+
+const canonicalDefault = Astro.url.href;
+
+const {
+  title,
+  description,
+  canonical = canonicalDefault,
+  openGraph = {},
+  ignoreTitleTemplate = false,
+  ...rest
+} = Astro.props;
+
+// Asegurar que la URL sea absoluta
+const absoluteImageUrl = `${Astro.site}/og.png`;
+---
+
+<AstroSeo
+  title={title}
+  titleTemplate={ignoreTitleTemplate ? undefined : `%s - ${title}`}
+  description={description}
+  canonical={canonical}
+  openGraph={{
+    url: canonical,
+    title: title,
+    description: description,
+    images: [
+      {
+        url: absoluteImageUrl,
+        width: 1200,
+        height: 630,
+        alt: title,
+        type: 'image/jpeg',
+      },
+    ],
+    site_name: title,
+    type: 'website',
+    locale: 'en',
+  }}
+  twitter={{
+    handle: '@elevenestudio',
+    site: 'starpi.elevenestudio.com',
+    cardType: 'summary_large_image',
+  }}
+  {...rest}
+/>
+
+<!-- Additional Twitter meta tags -->
+<meta name="twitter:image" content={absoluteImageUrl} />
+<meta name="twitter:image:alt" content={title} />
+
+<meta name="author" content={'Eleven Estudio'} />
+
+<!-- Canonical URL -->
+<link rel="canonical" href={canonical} />
+
+<!-- Additional SEO -->
+<meta name="robots" content="index, follow" />
+<meta name="googlebot" content="index, follow" />
