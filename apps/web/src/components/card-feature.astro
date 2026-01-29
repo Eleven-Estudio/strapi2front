@@ -1,0 +1,30 @@
+---
+import { cn } from '@/lib/utils';
+
+interface Props {
+  class?: string;
+  title: string;
+  soon?: boolean;
+  listFeatures: string[];
+}
+
+const { class: className, title, listFeatures, soon = false } = Astro.props;
+---
+
+<div class={cn('bg-[#161616] border border-[#333333] p-4 lg:p-6 flex flex-col gap-4 relative', className)}>
+  {soon && <span class="bg-[#0B0F16] text-[#D6F9F3] py-2 px-4 absolute w-fit top-0 right-0">SOON</span>}
+  <div class="border-b border-[#333333] w-fit flex flex-col gap-2">
+    <slot name="icon" />
+    <p class="uppercase text-sm lg:text-lg font-bold text-white">{title}</p>
+  </div>
+  <ul class="flex flex-col gap-1.5 md:gap-1">
+    {
+      listFeatures.map((feat) => (
+        <li class="text-xs md:text-sm">
+          <span class="text-[#76A54B] select-none">{'>'}</span>
+          <span class="text-[#9CA3AF]">{feat}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>

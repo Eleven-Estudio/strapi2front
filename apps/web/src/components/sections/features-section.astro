@@ -1,0 +1,89 @@
+---
+import CardFeature from '../card-feature.astro';
+import TypeSafeIcon from '../icons/type-safe-icon.astro';
+import ActionsIcon from '../icons/actions-icon.astro';
+import I18nIcon from '../icons/i18n-icon.astro';
+import ArchitectureIcon from '../icons/architecture-icon.astro';
+import AuthIcon from '../icons/auth-icon.astro';
+import NextjsLogo from '../icons/nextjs-logo.astro';
+import NuxtjsLogo from '../icons/nuxtjs-logo.astro';
+import SvelteLogo from '../icons/svelte-logo.astro';
+import ReactLogo from '../icons/react-logo.astro';
+import TanstackLogo from '../icons/tanstack-logo.astro';
+---
+
+<section class="px-4 lg:px-0 max-w-6xl mx-auto pb-8 lg:py-8">
+  <div
+    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 sm:grid-rows-2 md:grid-rows-3 gap-2.5 md:gap-3"
+  >
+    <CardFeature
+      title="Type-safe"
+      listFeatures={[
+        'TypeScript types from your real schema',
+        'Collections, Singles, Components & Relations',
+        'Full autocomplete in your IDE',
+      ]}
+    >
+      <TypeSafeIcon slot="icon" class="size-7 lg:size-8" />
+    </CardFeature>
+    <CardFeature
+      title="Actions"
+      listFeatures={[
+        'Pre-configured actions with Zod',
+        'Full CRUD for every Content Type',
+        'Built-in error handling',
+      ]}
+    >
+      <ActionsIcon slot="icon" class="size-7 lg:size-8" />
+    </CardFeature>
+    <CardFeature
+      title="I18N Ready"
+      listFeatures={[
+        'Detects your Strapi locales',
+        'Generates Locale types automatically',
+        'locale parameter in services',
+      ]}
+    >
+      <I18nIcon slot="icon" class="size-7 lg:size-8" />
+    </CardFeature>
+    <CardFeature
+      title="Flexible Architecture"
+      listFeatures={[
+        'by-layer: types/, services/, actions/',
+        'by-feature: collections/{name}/*',
+        'You decide how to organize your code',
+      ]}
+    >
+      <ArchitectureIcon slot="icon" class="size-7 lg:size-8" />
+    </CardFeature>
+    <CardFeature
+      class="opacity-50"
+      title="Auth Support"
+      soon={true}
+      listFeatures={[
+        'Login and register with Strapi multiples providers',
+        'Generates auth helpers',
+        'Works with Strapi Users & Permissions',
+      ]}
+    >
+      <AuthIcon slot="icon" class="size-7 lg:size-8" />
+    </CardFeature>
+    <CardFeature
+      class="opacity-50"
+      title="Multi-Framework Support"
+      soon={true}
+      listFeatures={[
+        'Built for Astro today. Ready for your stack tomorrow',
+        'One CLI. Every modern frontend framework',
+      ]}
+    >
+      <div slot="icon" class="flex gap-2.5">
+        <NextjsLogo class="size-7 lg:size-8" />
+        <TanstackLogo class="size-7 lg:size-8 rounded-full opacity-65" />
+        <SvelteLogo class="size-7 lg:size-8 opacity-45" />
+        <ReactLogo class="size-7 lg:size-8 opacity-30" />
+        <NuxtjsLogo class="size-7 lg:size-8 opacity-10" />
+      </div>
+    </CardFeature>
+  </div>
+</section>
