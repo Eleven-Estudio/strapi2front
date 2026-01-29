@@ -21,6 +21,9 @@ export default defineConfig({
     //   },
     // }),
   ],
+  devToolbar: {
+    enabled: false
+  },
   experimental: {
     fonts: [{
       provider: fontProviders.google(),

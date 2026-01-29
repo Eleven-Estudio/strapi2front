@@ -6,6 +6,7 @@ import Favicons from '@/components/fundations/favicons.astro';
 // import GtmNoscript from '@/components/gtm-noscript.astro';
 import TailwindIndicator from '@/components/tailwind-indicator.astro';
 import { Font } from 'astro:assets';
+import Footer from '@/components/globals/footer.astro';
 
 interface Props {
   metadata?: SEOProps;
@@ -30,6 +31,7 @@ const { metadata } = Astro.props;
   <body>
     <!-- <GtmNoscript /> -->
     <slot />
+    <Footer />
     <TailwindIndicator />
     <script src="@/scripts/eleven.ts"></script>
   </body>

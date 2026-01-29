@@ -1,117 +1,45 @@
 ---
-import Email from "@/components/icons/email.astro";
-import Facebook from "@/components/icons/facebook.astro";
-import Instagram from "@/components/icons/instagram.astro";
-import Linkedin from "@/components/icons/linkedin.astro";
-import Tiktok from "@/components/icons/tiktok.astro";
-import Twitter from "@/components/icons/twitter.astro";
-import Youtube from "@/components/icons/youtube.astro";
+import { cn } from '@/lib/utils';
+import Twitter from './icons/twitter.astro';
+import Github from './icons/github.astro';
+import Npm from './npm.astro';
+import NpmLight from './npm-light.astro';
 
 const { class: className, ...rest } = Astro.props;
 ---
 
-<ul class={cls11(className)} {...rest}>
-  {
-    BUSINESS_CONFIG.email && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.email.link}
-          class="hover:scale-110 block transition-transform duration-300"
-        >
-          <Email class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Email</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.facebook && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.facebook}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Facebook class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Facebook</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.instagram && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.instagram}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Instagram class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Instagram</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.linkedin && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.linkedin}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Linkedin class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Linkedin</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.twitter && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.twitter}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Twitter class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Twitter</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.tiktok && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.tiktok}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Tiktok class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Tiktok</span>
-        </a>
-      </li>
-    )
-  }
-  {
-    BUSINESS_CONFIG.social.youtube && (
-      <li>
-        <a
-          href={BUSINESS_CONFIG.social.youtube}
-          class="hover:scale-110 block transition-transform duration-300"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Youtube class="size-4 md:size-4 fill-white" />
-          <span class="sr-only">Youtube</span>
-        </a>
-      </li>
-    )
-  }
+<ul class={cn('flex justify-center gap-1', className)} {...rest}>
+  <li>
+    <a
+      href={'https://github.com/Eleven-Estudio'}
+      class="size-8 aspect-square flex items-center justify-center"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Github class="size-3 fill-white" />
+      <span class="sr-only">GitHub</span>
+    </a>
+  </li>
+  <li>
+    <a
+      class="size-8 aspect-square flex items-center justify-center"
+      href={'https://x.com/yonidev11'}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <NpmLight class="size-3 fill-white" />
+      <span class="sr-only">Npm</span>
+    </a>
+  </li>
+  <li>
+    <a
+      class="size-8 aspect-square flex items-center justify-center"
+      href={'https://x.com/yonidev11'}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Twitter class="size-3 fill-white" />
+      <span class="sr-only">Twitter</span>
+    </a>
+  </li>
 </ul>
