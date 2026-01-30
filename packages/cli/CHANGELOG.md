@@ -1,5 +1,16 @@
 # strapi2front
 
+## 0.1.4
+
+### Patch Changes
+
+- fix: correct import paths for relations in components (by-feature structure)
+
+  Components now correctly import from ../collections/ instead of ../../collections/
+
+- Updated dependencies
+  - @strapi2front/generators@0.1.4
+
 ## 0.1.3
 
 ### Patch Changes
