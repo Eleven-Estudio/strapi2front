@@ -4,6 +4,9 @@ import AstroLogo from '@/components/astro-logo.astro';
 import CommandPm from '../command-pm.astro';
 import Button from '../globals/button.astro';
 import Github from '../icons/github.astro';
+import { getLatestVersion } from '@/lib/get-version';
+
+const version = await getLatestVersion()
 ---
 
 <section
@@ -15,7 +18,7 @@ import Github from '../icons/github.astro';
       target="_blank"
       rel="noopener noreferrer"
       class="w-fit text-white border border-dashed bg-[#202020] border-[#424242] leading-tight pt-1 pb-0.5 lg:pt-2 lg:pb-1 px-2.5 text-xs lg:text-lg"
-      >v0.1.0</a
+      >v{version}</a
     >
     <div class="flex flex-col items-center gap-2 sm:gap-3.5">
       <h1
