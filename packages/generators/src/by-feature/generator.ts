@@ -686,6 +686,11 @@ function generateTypeImports(
   }
 
   // Extract relations and components
+  // Components are in strapi/components/, collections/singles are in strapi/collections/xxx/ or strapi/singles/xxx/
+  // From component: ../collections/xxx/types (one level up)
+  // From collection/single: ../../collections/xxx/types (two levels up, since they're in a subfolder)
+  const relativePrefix = context === 'component' ? '..' : '../..';
+
   for (const attr of Object.values(attributes)) {
     if (attr.type === 'relation' && 'target' in attr && attr.target) {
       const targetName = attr.target.split('.').pop() || '';
@@ -696,9 +701,9 @@ function generateTypeImports(
         const isCollection = schema.collections.some(c => c.singularName === targetName);
         const isSingle = schema.singles.some(s => s.singularName === targetName);
         if (isCollection) {
-          relationImports.set(typeName, `../../collections/${fileName}/types`);
+          relationImports.set(typeName, `${relativePrefix}/collections/${fileName}/types`);
         } else if (isSingle) {
-          relationImports.set(typeName, `../../singles/${fileName}/types`);
+          relationImports.set(typeName, `${relativePrefix}/singles/${fileName}/types`);
         }
       }
     }
