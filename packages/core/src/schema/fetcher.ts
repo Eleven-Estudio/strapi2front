@@ -18,13 +18,26 @@ function normalizeUrl(url: string): string {
 }
 
 /**
+ * Normalize API prefix (ensure it starts with / and has no trailing slash)
+ */
+function normalizeApiPrefix(prefix: string): string {
+  let normalized = prefix.trim();
+  if (!normalized.startsWith('/')) {
+    normalized = '/' + normalized;
+  }
+  return normalized.replace(/\/+$/, '');
+}
+
+/**
  * Fetch content type schema from Strapi
  */
 export async function fetchSchema(
   url: string,
-  token?: string
+  token?: string,
+  apiPrefix: string = "/api"
 ): Promise<StrapiSchema> {
   const baseUrl = normalizeUrl(url);
+  const prefix = normalizeApiPrefix(apiPrefix);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -36,7 +49,7 @@ export async function fetchSchema(
 
   // Fetch content types from content-type-builder API
   const contentTypesResponse = await fetch(
-    `${baseUrl}/api/content-type-builder/content-types`,
+    `${baseUrl}${prefix}/content-type-builder/content-types`,
     { headers }
   );
 
@@ -51,7 +64,7 @@ export async function fetchSchema(
 
   // Fetch components
   const componentsResponse = await fetch(
-    `${baseUrl}/api/content-type-builder/components`,
+    `${baseUrl}${prefix}/content-type-builder/components`,
     { headers }
   );
 
@@ -68,7 +81,7 @@ export async function fetchSchema(
   let locales: StrapiLocale[] = [];
   try {
     const localesResponse = await fetch(
-      `${baseUrl}/api/i18n/locales`,
+      `${baseUrl}${prefix}/i18n/locales`,
       { headers }
     );
 
@@ -118,9 +131,11 @@ export interface VersionDetectionResult {
  */
 export async function detectStrapiVersion(
   url: string,
-  token?: string
+  token?: string,
+  apiPrefix: string = "/api"
 ): Promise<VersionDetectionResult> {
   const baseUrl = normalizeUrl(url);
+  const prefix = normalizeApiPrefix(apiPrefix);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -132,7 +147,7 @@ export async function detectStrapiVersion(
 
   try {
     const response = await fetch(
-      `${baseUrl}/api/content-type-builder/content-types`,
+      `${baseUrl}${prefix}/content-type-builder/content-types`,
       { headers }
     );
 
@@ -220,9 +235,11 @@ export async function detectStrapiVersion(
  */
 export async function testConnection(
   url: string,
-  token?: string
+  token?: string,
+  apiPrefix: string = "/api"
 ): Promise<{ success: boolean; message: string; version?: string }> {
   const baseUrl = normalizeUrl(url);
+  const prefix = normalizeApiPrefix(apiPrefix);
 
   try {
     const headers: Record<string, string> = {
@@ -235,7 +252,7 @@ export async function testConnection(
 
     // Try to fetch content types (requires authentication)
     const response = await fetch(
-      `${baseUrl}/api/content-type-builder/content-types`,
+      `${baseUrl}${prefix}/content-type-builder/content-types`,
       { headers }
     );
 

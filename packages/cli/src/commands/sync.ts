@@ -173,7 +173,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
 
     // Detect and validate Strapi version
     s.start("Detecting Strapi version...");
-    const versionResult = await detectStrapiVersion(config.url, config.token);
+    const versionResult = await detectStrapiVersion(config.url, config.token, config.apiPrefix);
     s.stop("Version detection complete");
 
     let effectiveVersion: StrapiVersion = config.strapiVersion;
@@ -204,7 +204,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
 
     // Fetch schema from Strapi
     s.start("Fetching schema from Strapi...");
-    const rawSchema = await fetchSchema(config.url, config.token);
+    const rawSchema = await fetchSchema(config.url, config.token, config.apiPrefix);
     const schema = parseSchema(rawSchema);
     s.stop(`Schema fetched: ${schema.collections.length} collections, ${schema.singles.length} singles, ${schema.components.length} components`);
 
@@ -299,6 +299,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
         },
         blocksRendererInstalled,
         strapiVersion: config.strapiVersion,
+        apiPrefix: config.apiPrefix,
       });
       generatedFiles.push(...files);
       s.stop(`Generated ${files.length} files`);
@@ -324,7 +325,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       if (generateAll || options.servicesOnly) {
         if (config.features.services) {
           s.start("Generating client...");
-          const clientFiles = await generateClient({ outputDir: outputPath, strapiVersion: config.strapiVersion });
+          const clientFiles = await generateClient({ outputDir: outputPath, strapiVersion: config.strapiVersion, apiPrefix: config.apiPrefix });
           generatedFiles.push(...clientFiles);
           s.stop("Generated client");
 

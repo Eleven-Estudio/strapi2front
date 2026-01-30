@@ -173,6 +173,9 @@ export default defineConfig({
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
   token: process.env.STRAPI_TOKEN,
 
+  // API prefix (default: "/api", change if you customized it in Strapi)
+  // apiPrefix: "/api",
+
   // Output configuration
   output: {
     path: "${answers.outputDir}",

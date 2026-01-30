@@ -8,6 +8,9 @@ export const configSchema = z.object({
   url: z.string().url("url must be a valid URL"),
   token: z.string().min(1, "token is required").optional(),
 
+  // API prefix (default: "/api", can be customized in Strapi config)
+  apiPrefix: z.string().default("/api"),
+
   // Strapi version
   strapiVersion: z.enum(["v4", "v5"]).default("v5"),
 

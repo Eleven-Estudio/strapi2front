@@ -20,6 +20,7 @@ export interface ByFeatureGeneratorOptions {
   };
   blocksRendererInstalled?: boolean;
   strapiVersion?: "v4" | "v5";
+  apiPrefix?: string;
 }
 
 /**
@@ -48,7 +49,7 @@ export async function generateByFeature(
   locales: StrapiLocale[],
   options: ByFeatureGeneratorOptions
 ): Promise<string[]> {
-  const { outputDir, features, blocksRendererInstalled = false, strapiVersion = "v5" } = options;
+  const { outputDir, features, blocksRendererInstalled = false, strapiVersion = "v5", apiPrefix = "/api" } = options;
   const generatedFiles: string[] = [];
 
   // Ensure directories exist
@@ -67,7 +68,7 @@ export async function generateByFeature(
 
   // Client
   const clientPath = path.join(sharedDir, 'client.ts');
-  await writeFile(clientPath, await formatCode(generateClient(strapiVersion)));
+  await writeFile(clientPath, await formatCode(generateClient(strapiVersion, apiPrefix)));
   generatedFiles.push(clientPath);
 
   // Locales
@@ -302,8 +303,10 @@ ${blocksContentType}
 `;
 }
 
-function generateClient(strapiVersion: "v4" | "v5"): string {
+function generateClient(strapiVersion: "v4" | "v5", apiPrefix: string = "/api"): string {
   const isV4 = strapiVersion === "v4";
+  // Normalize prefix for the generated code
+  const normalizedPrefix = apiPrefix.startsWith('/') ? apiPrefix : '/' + apiPrefix;
 
   if (isV4) {
     return `/**
@@ -317,9 +320,11 @@ import type { StrapiPagination } from './utils';
 // Initialize the Strapi client
 const strapiUrl = import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337';
 const strapiToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+const strapiApiPrefix = import.meta.env.STRAPI_API_PREFIX || process.env.STRAPI_API_PREFIX || '${normalizedPrefix}';
 
 export const strapi = new Strapi({
   url: strapiUrl,
+  prefix: strapiApiPrefix,
   axiosOptions: {
     headers: strapiToken ? {
       Authorization: \`Bearer \${strapiToken}\`,
@@ -459,9 +464,11 @@ import type { StrapiPagination } from './utils';
 // Initialize the Strapi client
 const strapiUrl = import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337';
 const strapiToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+const strapiApiPrefix = import.meta.env.STRAPI_API_PREFIX || process.env.STRAPI_API_PREFIX || '${normalizedPrefix}';
 
 export const strapi = new Strapi({
   url: strapiUrl,
+  prefix: strapiApiPrefix,
   axiosOptions: {
     headers: strapiToken ? {
       Authorization: \`Bearer \${strapiToken}\`,
