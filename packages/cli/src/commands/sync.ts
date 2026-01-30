@@ -161,7 +161,7 @@ export interface SyncCommandOptions {
 export async function syncCommand(options: SyncCommandOptions): Promise<void> {
   const cwd = process.cwd();
 
-  p.intro(pc.cyan("strapi-integrate sync"));
+  p.intro(pc.cyan("strapi2front sync"));
 
   const s = p.spinner();
 
@@ -398,7 +398,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       logger.error(error.message);
 
       if (error.message.includes("Could not find strapi.config")) {
-        logger.info("Run \"npx strapi-integrate init\" first to set up your project.");
+        logger.info("Run \"npx strapi2front init\" first to set up your project.");
       }
     } else {
       logger.error("An unknown error occurred");

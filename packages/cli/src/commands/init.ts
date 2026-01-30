@@ -5,7 +5,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import { detectFramework } from "../lib/detectors/framework.js";
 import { detectTypeScript } from "../lib/detectors/typescript.js";
-import { detectPackageManager, getInstallCommand } from "../lib/detectors/package-manager.js";
+import { detectPackageManager, getInstallCommand, getInstallDevCommand } from "../lib/detectors/package-manager.js";
 import { runInitPrompts } from "../lib/prompts/init.prompts.js";
 import { logger } from "../lib/utils/logger.js";
 
@@ -70,27 +70,43 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
     s.stop("Configuration files created");
 
-    // Install strapi-sdk-js dependency
-    const installDep = await p.confirm({
-      message: "Install strapi-sdk-js dependency?",
+    // Install dependencies
+    const installDeps = await p.confirm({
+      message: "Install required dependencies (strapi2front, strapi-sdk-js)?",
       initialValue: true,
     });
 
-    if (p.isCancel(installDep)) {
+    if (p.isCancel(installDeps)) {
       p.cancel("Setup cancelled");
       process.exit(0);
     }
 
-    if (installDep) {
+    if (installDeps) {
+      // Install strapi2front as dev dependency (needed for config file)
+      s.start("Installing strapi2front...");
+      try {
+        const installStrapi2frontCmd = getInstallDevCommand(packageManager.name, "strapi2front");
+        execSync(installStrapi2frontCmd, { cwd, stdio: "ignore" });
+        s.stop("strapi2front installed");
+      } catch {
+        s.stop("Failed to install strapi2front");
+        logger.warn(`Please install manually: ${getInstallDevCommand(packageManager.name, "strapi2front")}`);
+      }
+
+      // Install strapi-sdk-js as regular dependency
       s.start("Installing strapi-sdk-js...");
       try {
-        const installCmd = getInstallCommand(packageManager.name, "strapi-sdk-js");
-        execSync(installCmd, { cwd, stdio: "ignore" });
-        s.stop("Dependency installed");
+        const installSdkCmd = getInstallCommand(packageManager.name, "strapi-sdk-js");
+        execSync(installSdkCmd, { cwd, stdio: "ignore" });
+        s.stop("strapi-sdk-js installed");
       } catch {
-        s.stop("Failed to install dependency");
+        s.stop("Failed to install strapi-sdk-js");
         logger.warn(`Please install manually: ${getInstallCommand(packageManager.name, "strapi-sdk-js")}`);
       }
+    } else {
+      p.log.info(pc.dim("Remember to install dependencies manually:"));
+      p.log.info(pc.dim(`  ${getInstallDevCommand(packageManager.name, "strapi2front")}`));
+      p.log.info(pc.dim(`  ${getInstallCommand(packageManager.name, "strapi-sdk-js")}`));
     }
 
     // Show success message
@@ -101,7 +117,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
         `${pc.green("v")} Created output directory ${pc.cyan(answers.outputDir)}`,
         "",
         `Next steps:`,
-        `  1. Run ${pc.cyan("npx strapi-integrate sync")} to generate types`,
+        `  1. Run ${pc.cyan("npx strapi2front sync")} to generate types`,
         `  2. Import types from ${pc.cyan(answers.outputDir + "/types")}`,
         `  3. Import services from ${pc.cyan(answers.outputDir + "/services")}`,
       ].join("\n"),
@@ -123,7 +139,7 @@ function generateConfigFile(answers: {
   generateActions: boolean;
   generateServices: boolean;
 }): string {
-  return `import { defineConfig } from "strapi-integrate";
+  return `import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   // Strapi connection

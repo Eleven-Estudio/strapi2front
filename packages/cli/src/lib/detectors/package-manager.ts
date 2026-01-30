@@ -47,6 +47,16 @@ export function getInstallCommand(pm: PackageManager, pkg: string): string {
   return commands[pm];
 }
 
+export function getInstallDevCommand(pm: PackageManager, pkg: string): string {
+  const commands: Record<PackageManager, string> = {
+    pnpm: `pnpm add -D ${pkg}`,
+    npm: `npm install -D ${pkg}`,
+    yarn: `yarn add -D ${pkg}`,
+    bun: `bun add -d ${pkg}`,
+  };
+  return commands[pm];
+}
+
 export function getRunCommand(pm: PackageManager, script: string): string {
   const commands: Record<PackageManager, string> = {
     pnpm: `pnpm ${script}`,

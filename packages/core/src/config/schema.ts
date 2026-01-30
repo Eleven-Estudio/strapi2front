@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Configuration schema for strapi-integrate
+ * Configuration schema for strapi2front
  */
 export const configSchema = z.object({
   // Strapi connection

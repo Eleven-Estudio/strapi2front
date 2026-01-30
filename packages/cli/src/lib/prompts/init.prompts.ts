@@ -20,7 +20,7 @@ export interface InitPromptAnswers {
 }
 
 export async function runInitPrompts(detection: DetectionResults): Promise<InitPromptAnswers | null> {
-  p.intro(pc.cyan("strapi-integrate setup"));
+  p.intro(pc.cyan("strapi2front setup"));
 
   // Show detected info
   p.note(

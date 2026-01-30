@@ -36,7 +36,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<StrapiInt
 
   if (!configPath) {
     throw new Error(
-      `Could not find strapi.config.ts in ${cwd}. Run "npx strapi-integrate init" first.`
+      `Could not find strapi.config.ts in ${cwd}. Run "npx strapi2front init" first.`
     );
   }
 
