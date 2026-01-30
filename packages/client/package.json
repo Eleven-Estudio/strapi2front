@@ -1,7 +1,7 @@
 {
-  "name": "@strapi-integrate/client",
+  "name": "@strapi2front/client",
   "version": "0.1.0",
-  "description": "Typed Strapi SDK wrapper for strapi-integrate",
+  "description": "Typed Strapi SDK client for strapi2front",
   "type": "module",
   "exports": {
     ".": {
@@ -36,7 +36,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eleven-estudio/strapi-integrate.git",
+    "url": "https://github.com/eleven-estudio/strapi2front.git",
     "directory": "packages/client"
   }
 }

@@ -1,6 +1,6 @@
-# Contributing to Strapi Integrate
+# Contributing to strapi2front
 
-Thank you for your interest in contributing to Strapi Integrate! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to strapi2front! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -28,8 +28,8 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/strapi-integrate.git
-   cd strapi-integrate
+   git clone https://github.com/YOUR_USERNAME/strapi2front.git
+   cd strapi2front
    ```
 
 3. Install dependencies:
@@ -68,9 +68,9 @@ pnpm format
 To test the CLI locally in another project:
 
 ```bash
-# From the strapi-integrate root
+# From the strapi2front root
 cd packages/cli
-node dist/bin/strapi-integrate.js <command>
+node dist/bin/strapi2front.js <command>
 
 # Or link globally (may require sudo)
 pnpm link --global
@@ -226,9 +226,9 @@ pnpm release
 ## Project Structure
 
 ```
-strapi-integrate/
+strapi2front/
 ├── packages/
-│   ├── cli/          # Main CLI package (strapi-integrate)
+│   ├── cli/          # Main CLI package (strapi2front)
 │   ├── core/         # Core functionality (config, schema parsing)
 │   ├── generators/   # Code generators (types, services, actions)
 │   └── client/       # Optional client utilities
@@ -240,10 +240,10 @@ strapi-integrate/
 ### Package Dependencies
 
 ```
-strapi-integrate (cli)
-    └── @strapi-integrate/core
-    └── @strapi-integrate/generators
-            └── @strapi-integrate/core
+strapi2front (cli)
+    └── @strapi2front/core
+    └── @strapi2front/generators
+            └── @strapi2front/core
 ```
 
 ## Questions?

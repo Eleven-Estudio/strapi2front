@@ -120,13 +120,13 @@ importers:
       '@clack/prompts':
         specifier: ^0.7.0
         version: 0.7.0
-      '@strapi-integrate/client':
+      '@strapi2front/client':
         specifier: workspace:*
         version: link:../client
-      '@strapi-integrate/core':
+      '@strapi2front/core':
         specifier: workspace:*
         version: link:../core
-      '@strapi-integrate/generators':
+      '@strapi2front/generators':
         specifier: workspace:*
         version: link:../generators
       commander:
@@ -189,7 +189,7 @@ importers:
 
   packages/generators:
     dependencies:
-      '@strapi-integrate/core':
+      '@strapi2front/core':
         specifier: workspace:*
         version: link:../core
       prettier:

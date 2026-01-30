@@ -1,7 +1,7 @@
 {
-  "name": "@strapi-integrate/core",
+  "name": "@strapi2front/core",
   "version": "0.1.0",
-  "description": "Core business logic for strapi-integrate",
+  "description": "Core utilities and configuration for strapi2front",
   "type": "module",
   "exports": {
     ".": {
@@ -38,7 +38,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eleven-estudio/strapi-integrate.git",
+    "url": "https://github.com/eleven-estudio/strapi2front.git",
     "directory": "packages/core"
   }
 }

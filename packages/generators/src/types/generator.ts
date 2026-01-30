@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ParsedSchema, Attribute, CollectionType, SingleType, ComponentType } from '@strapi-integrate/core';
+import type { ParsedSchema, Attribute, CollectionType, SingleType, ComponentType } from '@strapi2front/core';
 import { formatCode } from '../utils/formatter.js';
 import { writeFile, ensureDir } from '../utils/file.js';
 import { toPascalCase, toKebabCase } from '../utils/naming.js';

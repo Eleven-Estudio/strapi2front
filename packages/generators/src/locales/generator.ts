@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { StrapiLocale } from '@strapi-integrate/core';
+import type { StrapiLocale } from '@strapi2front/core';
 import { formatCode } from '../utils/formatter.js';
 import { writeFile, ensureDir } from '../utils/file.js';
 

@@ -1,10 +1,10 @@
 {
-  "name": "strapi-integrate",
+  "name": "strapi2front",
   "version": "0.1.0",
-  "description": "CLI for seamlessly integrating Strapi CMS with modern frontend frameworks",
+  "description": "Generate TypeScript types, services, and framework actions from your Strapi schema",
   "type": "module",
   "bin": {
-    "strapi-integrate": "./dist/bin/strapi-integrate.js"
+    "strapi2front": "./dist/bin/strapi2front.js"
   },
   "exports": {
     ".": {
@@ -22,13 +22,13 @@
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/bin/strapi-integrate.js"
+    "start": "node dist/bin/strapi2front.js"
   },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
-    "@strapi-integrate/client": "workspace:*",
-    "@strapi-integrate/core": "workspace:*",
-    "@strapi-integrate/generators": "workspace:*",
+    "@strapi2front/client": "workspace:*",
+    "@strapi2front/core": "workspace:*",
+    "@strapi2front/generators": "workspace:*",
     "commander": "^12.0.0",
     "execa": "^8.0.0",
     "fast-glob": "^3.3.0",
@@ -48,19 +48,20 @@
     "cms",
     "astro",
     "nextjs",
-    "cli",
     "typescript",
-    "code-generation"
+    "codegen",
+    "types",
+    "actions"
   ],
   "license": "MIT",
   "author": "Eleven Estudio <hello@eleven-estudio.dev>",
-  "homepage": "https://github.com/eleven-estudio/strapi-integrate#readme",
+  "homepage": "https://github.com/eleven-estudio/strapi2front#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eleven-estudio/strapi-integrate.git",
+    "url": "https://github.com/eleven-estudio/strapi2front.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/eleven-estudio/strapi-integrate/issues"
+    "url": "https://github.com/eleven-estudio/strapi2front/issues"
   }
 }

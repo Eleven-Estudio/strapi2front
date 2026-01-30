@@ -6,7 +6,7 @@ import type {
   ComponentType,
   Attribute,
   StrapiLocale,
-} from '@strapi-integrate/core';
+} from '@strapi2front/core';
 import { formatCode } from '../utils/formatter.js';
 import { writeFile, ensureDir } from '../utils/file.js';
 import { toPascalCase, toCamelCase, toKebabCase } from '../utils/naming.js';

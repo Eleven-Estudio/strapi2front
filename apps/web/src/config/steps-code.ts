@@ -1,6 +1,6 @@
 export const setupOutput = `
   ◇ Project configuration detected
-  ┌ starpi setup
+  ┌ strapi2front setup
   │
   ◇  Detected Configuration ─────╮
   │                              │
@@ -35,14 +35,14 @@ export const setupOutput = `
   │ v Updated .env with Strapi credentials
   │
   │ Next steps:
-  │  1. Run npx strapi-integrate sync to generate types
+  │  1. Run npx strapi2front sync to generate types
   │  2. Import types from src/strapi/types
   │  3. Import services from src/strapi/services
   │
   └ Happy Coding!`;
 
 export const configCode = `
-import { defineConfig } from "starpi";
+import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   url: process.env.STRAPI_URL || "http://localhost:1337",

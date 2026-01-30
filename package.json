@@ -1,8 +1,8 @@
 {
-  "name": "strapi-integrate-monorepo",
+  "name": "strapi2front-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "CLI for seamlessly integrating Strapi CMS with modern frontend frameworks",
+  "description": "Generate TypeScript types, services, and framework actions from your Strapi schema",
   "type": "module",
   "scripts": {
     "build": "turbo run build",
@@ -40,6 +40,6 @@
   "author": "Eleven Estudio <hello@eleven-estudio.dev>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eleven-estudio/strapi-integrate.git"
+    "url": "https://github.com/eleven-estudio/strapi2front.git"
   }
 }

@@ -1,7 +1,7 @@
 {
-  "name": "@strapi-integrate/generators",
+  "name": "@strapi2front/generators",
   "version": "0.1.0",
-  "description": "Code generators for strapi-integrate",
+  "description": "Code generators for strapi2front",
   "type": "module",
   "exports": {
     ".": {
@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@strapi-integrate/core": "workspace:*",
+    "@strapi2front/core": "workspace:*",
     "prettier": "^3.2.0"
   },
   "devDependencies": {
@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eleven-estudio/strapi-integrate.git",
+    "url": "https://github.com/eleven-estudio/strapi2front.git",
     "directory": "packages/generators"
   }
 }

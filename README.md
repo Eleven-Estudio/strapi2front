@@ -1,8 +1,8 @@
-# strapi-integrate
+# strapi2front
 
-> CLI for seamlessly integrating Strapi CMS with modern frontend frameworks
+> Generate TypeScript types, services, and framework actions from your Strapi schema
 
-[![npm version](https://img.shields.io/npm/v/strapi-integrate.svg)](https://www.npmjs.com/package/strapi-integrate)
+[![npm version](https://img.shields.io/npm/v/strapi2front.svg)](https://www.npmjs.com/package/strapi2front)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
@@ -16,22 +16,22 @@
 ## Quick Start
 
 ```bash
-# Initialize in your Astro project
-npx strapi-integrate init
+# Initialize in your project
+npx strapi2front init
 
 # Sync when your Strapi schema changes
-npx strapi-integrate sync
+npx strapi2front sync
 ```
 
 ## Requirements
 
 - Node.js 18+
-- Strapi v5
+- Strapi v4 or v5
 - Astro 4+ (more frameworks coming soon)
 
 ## Documentation
 
-Coming soon at [strapi-integrate.dev](https://strapi-integrate.dev)
+Coming soon at [strapi2front.dev](https://strapi2front.dev)
 
 ## Contributing
 
@@ -41,6 +41,10 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 MIT - see [LICENSE](LICENSE) for details.
 
+## Disclaimer
+
+This is a community project and is not affiliated with, endorsed by, or officially connected to [Strapi](https://strapi.io). The name "Strapi" is used solely to indicate compatibility with the Strapi CMS.
+
 ---
 
-Made with love by [Eleven Estudio](https://eleven-estudio.dev)
+Made with ❤️ by [Eleven Estudio](https://eleven-estudio.dev)

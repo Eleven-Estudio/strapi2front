@@ -2,12 +2,12 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": [
     "@changesets/changelog-github",
-    { "repo": "eleven-estudio/strapi-integrate" }
+    { "repo": "eleven-estudio/strapi2front" }
   ],
   "commit": false,
   "fixed": [],
   "linked": [
-    ["strapi-integrate", "@strapi-integrate/core", "@strapi-integrate/generators", "@strapi-integrate/client"]
+    ["strapi2front", "@strapi2front/core", "@strapi2front/generators", "@strapi2front/client"]
   ],
   "access": "public",
   "baseBranch": "main",
