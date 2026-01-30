@@ -97,6 +97,16 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
   // Use default if empty or whitespace only
   const strapiUrl = ((strapiUrlInput as string) || "").trim() || defaultUrl;
 
+  // Show token permissions hint
+  p.log.message(
+    pc.dim(
+      `\n  To generate a token: Strapi Admin > Settings > API Tokens > Create new API Token\n` +
+      `  Required permissions (Content-type-builder):\n` +
+      `    - Components: getComponents, getComponent\n` +
+      `    - Content-types: getContentTypes, getContentType\n`
+    )
+  );
+
   const strapiToken = await p.text({
     message: "What is your Strapi API token?",
     placeholder: "Press Enter to skip (you can add it later in .env)",
