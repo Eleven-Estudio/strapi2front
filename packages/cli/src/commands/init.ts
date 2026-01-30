@@ -77,6 +77,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
     const configContent = generateConfigFile({
       strapiUrl: answers.strapiUrl,
       strapiVersion: answers.strapiVersion,
+      apiPrefix: answers.apiPrefix,
       outputDir: answers.outputDir,
       generateActions: answers.generateActions,
       generateServices: answers.generateServices,
@@ -162,20 +163,23 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 function generateConfigFile(answers: {
   strapiUrl: string;
   strapiVersion: "v4" | "v5";
+  apiPrefix: string;
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
 }): string {
+  // Only include apiPrefix if it's not the default
+  const apiPrefixLine = answers.apiPrefix !== "/api"
+    ? `\n  // API prefix (customized from default "/api")\n  apiPrefix: "${answers.apiPrefix}",\n`
+    : "";
+
   return `import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   // Strapi connection
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
   token: process.env.STRAPI_TOKEN,
-
-  // API prefix (default: "/api", change if you customized it in Strapi)
-  // apiPrefix: "/api",
-
+${apiPrefixLine}
   // Output configuration
   output: {
     path: "${answers.outputDir}",

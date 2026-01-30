@@ -14,6 +14,7 @@ export interface InitPromptAnswers {
   strapiUrl: string;
   strapiToken: string;
   strapiVersion: "v4" | "v5";
+  apiPrefix: string;
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
@@ -104,6 +105,32 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
 
   p.log.info(pc.dim(`Using Strapi ${strapiVersion}. This can be changed later in strapi.config.ts`));
 
+  // API Prefix
+  const defaultPrefix = "/api";
+  const apiPrefixInput = await p.text({
+    message: "What is your Strapi API prefix?",
+    placeholder: `${defaultPrefix} (press Enter for default)`,
+    validate: (value): string | undefined => {
+      const trimmed = (value || "").trim();
+      if (trimmed === "") return undefined;
+      if (!trimmed.startsWith("/")) {
+        return "API prefix must start with /";
+      }
+      return undefined;
+    },
+  });
+
+  if (p.isCancel(apiPrefixInput)) {
+    p.cancel("Setup cancelled");
+    return null;
+  }
+
+  const apiPrefix = ((apiPrefixInput as string) || "").trim() || defaultPrefix;
+
+  if (apiPrefix !== defaultPrefix) {
+    p.log.info(pc.dim(`Using custom API prefix: ${apiPrefix}`));
+  }
+
   // Output directory
   const outputDir = await p.text({
     message: "Where should we generate the Strapi files?",
@@ -137,6 +164,7 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     strapiUrl: strapiUrl,
     strapiToken: trimmedToken,
     strapiVersion: strapiVersion as "v4" | "v5",
+    apiPrefix: apiPrefix,
     outputDir: ((outputDir as string) || "").trim() || "src/strapi",
     generateActions: (features as string[]).includes("actions"),
     generateServices: (features as string[]).includes("services"),

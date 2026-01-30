@@ -171,36 +171,6 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     let config = await loadConfig(cwd);
     s.stop("Configuration loaded");
 
-    // Prompt for API prefix confirmation
-    const currentPrefix = config.apiPrefix || "/api";
-    const apiPrefixInput = await p.text({
-      message: "What is your Strapi API prefix?",
-      placeholder: `${currentPrefix} (press Enter to use configured value)`,
-      initialValue: currentPrefix,
-      validate: (value): string | undefined => {
-        const trimmed = (value || "").trim();
-        if (trimmed === "") return undefined;
-        // Must start with / or be empty
-        if (!trimmed.startsWith("/")) {
-          return "API prefix must start with /";
-        }
-        return undefined;
-      },
-    });
-
-    if (p.isCancel(apiPrefixInput)) {
-      p.cancel("Sync cancelled");
-      process.exit(0);
-    }
-
-    const apiPrefix = ((apiPrefixInput as string) || "").trim() || currentPrefix;
-
-    // Update config with the user-provided prefix
-    if (apiPrefix !== currentPrefix) {
-      p.log.info(pc.dim(`Using API prefix: ${apiPrefix}`));
-      config = { ...config, apiPrefix };
-    }
-
     // Detect and validate Strapi version
     s.start("Detecting Strapi version...");
     const versionResult = await detectStrapiVersion(config.url, config.token, config.apiPrefix);
