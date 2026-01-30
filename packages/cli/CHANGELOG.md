@@ -1,5 +1,13 @@
 # strapi2front
 
+## 0.4.2
+
+### Patch Changes
+
+- Add token permissions hint in init command
+
+  Show required Strapi Content-type-builder permissions before asking for API token
+
 ## 0.4.1
 
 ### Patch Changes

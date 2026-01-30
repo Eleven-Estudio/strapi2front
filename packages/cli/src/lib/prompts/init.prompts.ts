@@ -101,9 +101,12 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
   p.log.message(
     pc.dim(
       `\n  To generate a token: Strapi Admin > Settings > API Tokens > Create new API Token\n` +
-      `  Required permissions (Content-type-builder):\n` +
-      `    - Components: getComponents, getComponent\n` +
-      `    - Content-types: getContentTypes, getContentType\n`
+      `  Required permissions:\n` +
+      `    Content-type-builder:\n` +
+      `      - Components: getComponents, getComponent\n` +
+      `      - Content-types: getContentTypes, getContentType\n` +
+      `    I18n (if using localization):\n` +
+      `      - Locales: listLocales\n`
     )
   );
 
