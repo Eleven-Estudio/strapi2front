@@ -1,5 +1,11 @@
 # @strapi2front/generators
 
+## 0.3.2
+
+### Patch Changes
+
+- Fix JSDoc type casting in shared utils flattenV4Response function
+
 ## 0.3.1
 
 ### Patch Changes
