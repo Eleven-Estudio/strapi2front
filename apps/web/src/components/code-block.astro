@@ -1,0 +1,141 @@
+---
+import { createHighlighter, type ShikiTransformer } from 'shiki';
+import ButtonCopy from './button-copy.astro';
+import { cn } from '@/lib/utils';
+
+type Lang = 'typescript' | 'bash' | 'json' | 'javascript' | 'astro';
+
+interface BaseProps {
+  class?: string;
+}
+
+interface FileProps extends BaseProps {
+  type: 'file';
+  code: string;
+  lang?: Lang;
+  filename: string;
+  showLineNumbers?: boolean;
+}
+
+interface TerminalProps extends BaseProps {
+  type: 'terminal';
+  command: string;
+  output: string;
+}
+
+type Props = FileProps | TerminalProps;
+
+const props = Astro.props as Props;
+
+const highlighter = await createHighlighter({
+  themes: ['ayu-dark'],
+  langs: ['typescript', 'bash', 'json', 'javascript', 'astro', 'svelte', 'jsx'],
+});
+
+function highlightCode(code: string, lang: Lang, withLineNumbers: boolean) {
+  const transformers: ShikiTransformer[] = [
+    {
+      name: 'remove-background',
+      pre: (node) => {
+        if (node.properties.style) {
+          const style = node.properties.style as string;
+          node.properties.style = style.replace(/background-color:[^;]+;?/g, '');
+        }
+      },
+    },
+  ];
+
+  if (withLineNumbers) {
+    transformers.push({
+      name: 'line-numbers',
+      line(node, line) {
+        node.properties['data-line'] = line;
+      },
+    });
+  }
+
+  return highlighter.codeToHtml(code.trim(), {
+    theme: 'ayu-dark',
+    lang,
+    transformers,
+  });
+}
+
+// Generate unique IDs
+const codeId = `code-${Math.random().toString(36).slice(2, 9)}`;
+const commandId = `cmd-${Math.random().toString(36).slice(2, 9)}`;
+
+// Prepare data based on type
+const isFile = props.type === 'file';
+const highlightedCode = isFile ? highlightCode(props.code, props.lang ?? 'typescript', props.showLineNumbers ?? false) : '';
+const filename = isFile ? props.filename : '';
+const showLineNumbers = isFile ? (props.showLineNumbers ?? false) : false;
+const command = !isFile ? props.command : '';
+const output = !isFile ? props.output : '';
+
+function formatTerminalOutput(text: string): string {
+  return text
+    .replace(/◇/g, '<span class="text-[#86efac]">◇</span>')
+    .replace(/([✔√])/g, '<span class="text-[#86efac]">$1</span>')
+    .replace(/(enabled)/gi, '<span class="text-[#86efac]">$1</span>')
+    .replace(/(pnpm|npm|yarn|bun)(?=\s|$)/g, '<span class="text-[#fbbf24]">$1</span>')
+    .replace(/(http:\/\/[^\s<]+)/g, '<span class="text-[#60a5fa]">$1</span>')
+    .replace(/(Astro v[\d.]+)/g, '<span class="text-[#f472b6]">$1</span>')
+    .replace(/(Happy Coding!)/g, '<span class="text-[#86efac] font-semibold">$1</span>')
+    .replace(/(YOUR API TOKEN)/g, '<span class="text-[#fbbf24]">$1</span>')
+    .replace(/(v Created|v Updated|√ Created|√ Updated)/g, '<span class="text-[#86efac]">$1</span>')
+    .replace(/(Next steps:)/g, '<span class="text-white font-semibold">$1</span>')
+    .replace(/(Setup complete!)/g, '<span class="text-white font-semibold">$1</span>')
+    .replace(/(strapi-integrate)/g, '<span class="text-[#3AF6D6]">$1</span>')
+    .replace(/(\d+\.\s)/g, '<span class="text-[#6b7280]">$1</span>');
+}
+
+const formattedOutput = !isFile ? formatTerminalOutput(output) : '';
+---
+
+<div
+  class={cn(
+    'bg-black border border-[#83848D]/30 overflow-hidden w-full group code-block',
+    props.class
+  )}
+>
+  {
+    isFile ? (
+      <>
+        <div class="flex items-center justify-between gap-2 h-10 border-b px-3 sm:px-4 border-[#83848D]/30 text-[#9CA3AF]">
+          <span class="flex-1 truncate text-xs sm:text-sm font-mono">{filename}</span>
+          <ButtonCopy target={`#${codeId}`} class="opacity-50 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <div
+          class:list={[
+            'py-3 sm:py-4 font-mono text-[10px] sm:text-[13px] overflow-auto',
+            '[&>pre]:bg-transparent!',
+            '[&>pre]:p-0 [&>pre]:m-0',
+            '**:text-[10px]! sm:**:text-[13px]! **:leading-relaxed!',
+            '[&_.line]:px-3 sm:[&_.line]:px-4',
+            {
+              '[&_.line]:before:content-[attr(data-line)] [&_.line]:before:inline-block [&_.line]:before:w-8 [&_.line]:before:text-[#6B7280] [&_.line]:before:text-right [&_.line]:before:mr-4 [&_.line]:before:select-none':
+                showLineNumbers,
+            },
+          ]}
+        >
+          <div id={codeId} set:html={highlightedCode} />
+        </div>
+      </>
+    ) : (
+      <div class="p-3 sm:p-4 font-mono text-[10px] sm:text-[13px] overflow-auto">
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-2 group/cmd">
+            <span class="text-[#86efac] select-none">$</span>
+            <span id={commandId} class="text-zinc-100 flex-1">{command}</span>
+            <ButtonCopy
+              target={`#${commandId}`}
+              class="h-5 w-5 opacity-0 group-hover/cmd:opacity-70 hover:!opacity-100 transition-opacity [&_.copy-icon]:h-3.5 [&_.copy-icon]:w-3.5 [&_.check-icon]:h-3.5 [&_.check-icon]:w-3.5 [&_.text-copy]:hidden"
+            />
+          </div>
+          <pre class="text-[#9CA3AF] whitespace-pre-wrap leading-relaxed mt-2" set:html={formattedOutput} />
+        </div>
+      </div>
+    )
+  }
+</div>

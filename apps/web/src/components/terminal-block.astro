@@ -1,0 +1,28 @@
+---
+import ButtonCopy from './button-copy.astro';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  command: string;
+  output?: string;
+  class?: string;
+}
+
+const { command, output, class: className } = Astro.props;
+
+const terminalId = `terminal-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class={cn('bg-black border border-[#83848D]/30 rounded-sm overflow-hidden w-full', className)}>
+  <div class="p-4 font-mono text-[13px] flex flex-col gap-3 overflow-auto">
+    <div class="flex items-center gap-2">
+      <span class="text-[#3AF6D6] select-none">$</span>
+      <span id={terminalId} class="text-zinc-100 flex-1">{command}</span>
+      <ButtonCopy
+        target={`#${terminalId}`}
+        class="opacity-0 group-hover:opacity-100 transition-opacity"
+      />
+    </div>
+    {output && <pre class="text-zinc-400 whitespace-pre-wrap leading-relaxed">{output}</pre>}
+  </div>
+</div>

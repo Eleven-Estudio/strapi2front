@@ -1,0 +1,330 @@
+---
+import CodeBlock from '@/components/code-block.astro';
+import { configCode, setupOutput, syncOutput, useCode } from '@/config/steps-code';
+
+const steps = [
+  { id: 'setup', title: 'Setup in your project' },
+  { id: 'config', title: 'Configure your enviroment' },
+  { id: 'sync', title: 'Run sync to generate code' },
+  { id: 'use', title: 'Use in your components' },
+];
+---
+
+<style>
+  @reference '../../assets/css/global.css';
+
+  .workflow-list li button {
+    @apply text-neutral-600 text-sm sm:text-lg hover:text-neutral-500 cursor-pointer transition-colors duration-200;
+  }
+
+  .workflow-list li button.active {
+    @apply text-white;
+  }
+
+  .workflow-step-indicator {
+    @apply absolute -left-0.5 sm:-left-4 mt-0.5 w-4 pr-2 sm:pr-4 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 transition-all duration-200 ease-in-out border-r border-neutral-700 text-neutral-600 opacity-0;
+  }
+
+  .workflow-list li button.active .workflow-step-indicator {
+    @apply text-white border-white opacity-100;
+  }
+
+  .workflow-list li button:hover .workflow-step-indicator {
+    @apply text-neutral-400 border-neutral-400;
+  }
+
+  .workflow-content-wrapper {
+    @apply relative w-full h-[390px] sm:h-[480px];
+  }
+
+  .workflow-content-item {
+    @apply absolute inset-0 w-full h-full;
+    transform-origin: center center;
+  }
+
+  /* Ensure CodeBlocks inside fill the container and scroll if needed */
+  .workflow-content-item :global(.code-block) {
+    @apply h-full max-h-full flex flex-col relative;
+  }
+
+  .workflow-content-item :global(.code-block > div:last-child) {
+    @apply flex-1 overflow-y-auto pb-12;
+  }
+
+  /* Gradient fade mask at the bottom to indicate scrollable content */
+  .workflow-content-item :global(.code-block)::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 h-16 pointer-events-none;
+    background: linear-gradient(to top, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 0) 100%);
+  }
+</style>
+
+<section class="px-4 xl:px-0 max-w-6xl mx-auto pb-8 md:py-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Left column: Title and steps -->
+    <div class="flex flex-col gap-4 sm:gap-8">
+      <div class="flex flex-col gap-3">
+        <h2 class="sm:max-w-[20ch] text-xl leading-tight sm:text-4xl text-white text-balance">Your Astro code, automated</h2>
+        <p class="text-[#9CA3AF] text-xs sm:text-base">
+          <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>Don't waste time
+          defining interfaces <br />
+          <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>strapi-integrate
+          reads the Strapi schema <br />
+          <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>and generates
+          native Astro Actions.
+        </p>
+      </div>
+      <ul class="workflow-list pl-6 flex flex-col gap-1 sm:gap-2 relative">
+        {
+          steps.map((step, index) => (
+            <li>
+              <button class:list={[index === 0 && 'active']} data-step={step.id}>
+                <span class="workflow-step-indicator hidden xl:flex">{index + 1}</span>
+                {step.title}
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <!-- Right column: Animated code blocks -->
+    <div class="workflow-content-wrapper" id="workflow-content">
+      <div class="workflow-content-item" data-content="setup" style="opacity: 1; display: block;">
+        <CodeBlock type="terminal" command="npx starpi@latest" output={setupOutput} />
+      </div>
+      <div class="workflow-content-item" data-content="config" style="opacity: 0; display: none;">
+        <CodeBlock type="file" filename="strapi.config.ts" code={configCode} lang="typescript" />
+      </div>
+      <div class="workflow-content-item" data-content="sync" style="opacity: 0; display: none;">
+        <CodeBlock type="terminal" command="npx starpi@latest sync" output={syncOutput} />
+      </div>
+      <div class="workflow-content-item" data-content="use" style="opacity: 0; display: none;">
+        <CodeBlock type="file" filename="src/pages/index.astro" code={useCode} lang="astro" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import gsap from 'gsap';
+
+  const steps = ['setup', 'config', 'sync', 'use'];
+  let currentStep = 'setup';
+  let isAutoPlaying = true;
+  let isHovering = false;
+  let autoPlayTimer: ReturnType<typeof setInterval> | null = null;
+  let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+  let currentAnimation: gsap.core.Timeline | null = null;
+
+  const $buttons = document.querySelectorAll<HTMLButtonElement>('.workflow-list li button');
+  const $contentItems = document.querySelectorAll<HTMLDivElement>('.workflow-content-item');
+  const $section = document.querySelector<HTMLElement>('.workflow-content-wrapper');
+  const $stepsList = document.querySelector<HTMLElement>('.workflow-list');
+
+  function getContentElement(stepId: string): HTMLDivElement | null {
+    return document.querySelector<HTMLDivElement>(`.workflow-content-item[data-content="${stepId}"]`);
+  }
+
+  function animateToStep(newStep: string) {
+    if (newStep === currentStep) return;
+
+    const $currentContent = getContentElement(currentStep);
+    const $newContent = getContentElement(newStep);
+
+    if (!$newContent) return;
+
+    // Kill any existing animation
+    if (currentAnimation) {
+      currentAnimation.kill();
+      currentAnimation = null;
+
+      // Ensure all content items except the new one are hidden
+      if ($currentContent) {
+        gsap.set($currentContent, { opacity: 0, display: 'none' });
+      }
+    }
+
+    // Update buttons
+    $buttons.forEach(($btn) => {
+      $btn.classList.toggle('active', $btn.dataset.step === newStep);
+    });
+
+    const previousStep = currentStep;
+    currentStep = newStep;
+
+    const $previousContent = getContentElement(previousStep);
+
+    if (!$previousContent) {
+      // First load - just show the new content
+      gsap.set($newContent, {
+        display: 'block',
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        zIndex: 10,
+      });
+
+      $contentItems.forEach(($item) => {
+        if ($item.dataset.content !== newStep) {
+          gsap.set($item, { display: 'none' });
+        }
+      });
+
+      return;
+    }
+
+    // Create the timeline animation
+    const tl = gsap.timeline({
+      onComplete: () => {
+        // Hide all non-active content after animation
+        $contentItems.forEach(($item) => {
+          if ($item.dataset.content !== newStep) {
+            gsap.set($item, { display: 'none' });
+          }
+        });
+        currentAnimation = null;
+      },
+    });
+
+    currentAnimation = tl;
+
+    // Set up the new content for animation
+    gsap.set($newContent, {
+      display: 'block',
+      zIndex: 10,
+    });
+
+    // Animate out the previous content
+    tl.to(
+      $previousContent,
+      {
+        scale: 0.98,
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power2.out',
+      },
+      0
+    );
+
+    // Animate in the new content
+    tl.fromTo(
+      $newContent,
+      {
+        y: 60,
+        scale: 1,
+        opacity: 0,
+      },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.5,
+        ease: 'power2.out',
+      },
+      0.1
+    );
+  }
+
+  function handleStepClick(stepId: string) {
+    animateToStep(stepId);
+    isAutoPlaying = false;
+
+    // Clear autoplay timer
+    if (autoPlayTimer) {
+      clearInterval(autoPlayTimer);
+      autoPlayTimer = null;
+    }
+
+    // Clear existing resume timer
+    if (resumeTimer) {
+      clearTimeout(resumeTimer);
+    }
+
+    // Resume autoplay after 5 seconds of inactivity
+    resumeTimer = setTimeout(() => {
+      isAutoPlaying = true;
+      startAutoPlay();
+    }, 5000);
+  }
+
+  function startAutoPlay() {
+    if (autoPlayTimer) {
+      clearInterval(autoPlayTimer);
+    }
+
+    autoPlayTimer = setInterval(() => {
+      // Don't advance if paused, hovering, or not auto-playing
+      if (!isAutoPlaying || isHovering) return;
+
+      const currentIndex = steps.indexOf(currentStep);
+      const nextIndex = currentIndex >= steps.length - 1 ? 0 : currentIndex + 1;
+      animateToStep(steps[nextIndex]);
+    }, 5000);
+  }
+
+  function handleMouseEnter() {
+    isHovering = true;
+  }
+
+  function handleMouseLeave() {
+    isHovering = false;
+  }
+
+  function handleTouch() {
+    isHovering = true;
+
+    // Clear any existing resume timer
+    if (resumeTimer) {
+      clearTimeout(resumeTimer);
+    }
+
+    // Resume autoplay after 8 seconds of no interaction on mobile
+    resumeTimer = setTimeout(() => {
+      isHovering = false;
+    }, 8000);
+  }
+
+  // Initialize click handlers
+  $buttons.forEach(($btn) => {
+    $btn.addEventListener('click', () => {
+      const stepId = $btn.dataset.step;
+      if (stepId) {
+        handleStepClick(stepId);
+      }
+    });
+  });
+
+  // Pause autoplay on hover (desktop)
+  [$section, $stepsList].forEach(($el) => {
+    $el?.addEventListener('mouseenter', handleMouseEnter);
+    $el?.addEventListener('mouseleave', handleMouseLeave);
+  });
+
+  // Pause autoplay on touch (mobile)
+  [$section, $stepsList].forEach(($el) => {
+    $el?.addEventListener('touchstart', handleTouch, { passive: true });
+  });
+
+  // Start autoplay
+  startAutoPlay();
+
+  // Cleanup on page navigation (for Astro's View Transitions)
+  document.addEventListener('astro:before-swap', () => {
+    if (autoPlayTimer) {
+      clearInterval(autoPlayTimer);
+    }
+    if (resumeTimer) {
+      clearTimeout(resumeTimer);
+    }
+    if (currentAnimation) {
+      currentAnimation.kill();
+    }
+
+    // Remove hover and touch listeners
+    [$section, $stepsList].forEach(($el) => {
+      $el?.removeEventListener('mouseenter', handleMouseEnter);
+      $el?.removeEventListener('mouseleave', handleMouseLeave);
+      $el?.removeEventListener('touchstart', handleTouch);
+    });
+  });
+</script>
