@@ -73,16 +73,18 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
   s.start("Creating configuration files...");
 
   try {
-    // Create strapi.config.ts
+    // Create config file (use .js extension for JSDoc projects)
+    const configExtension = answers.outputFormat === "jsdoc" ? "js" : "ts";
     const configContent = generateConfigFile({
       strapiUrl: answers.strapiUrl,
       strapiVersion: answers.strapiVersion,
       apiPrefix: answers.apiPrefix,
+      outputFormat: answers.outputFormat,
       outputDir: answers.outputDir,
       generateActions: answers.generateActions,
       generateServices: answers.generateServices,
     });
-    const configPath = path.join(cwd, "strapi.config.ts");
+    const configPath = path.join(cwd, `strapi.config.${configExtension}`);
     await fs.writeFile(configPath, configContent, "utf-8");
 
     // Update .env file
@@ -138,16 +140,20 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
     }
 
     // Show success message
+    const configFileName = `strapi.config.${configExtension}`;
+    const fileExt = answers.outputFormat === "jsdoc" ? ".js" : ".ts";
     p.note(
       [
-        `${pc.green("v")} Created ${pc.cyan("strapi.config.ts")}`,
-        `${pc.green("v")} Updated ${pc.cyan(".env")} with Strapi credentials`,
-        `${pc.green("v")} Created output directory ${pc.cyan(answers.outputDir)}`,
+        `${pc.green("✓")} Created ${pc.cyan(configFileName)}`,
+        `${pc.green("✓")} Updated ${pc.cyan(".env")} with Strapi credentials`,
+        `${pc.green("✓")} Created output directory ${pc.cyan(answers.outputDir)}`,
+        "",
+        `Output format: ${pc.cyan(answers.outputFormat === "jsdoc" ? "JavaScript (JSDoc)" : "TypeScript")}`,
         "",
         `Next steps:`,
-        `  1. Run ${pc.cyan("npx strapi2front sync")} to generate types`,
-        `  2. Import types from ${pc.cyan(answers.outputDir + "/types")}`,
-        `  3. Import services from ${pc.cyan(answers.outputDir + "/services")}`,
+        `  1. Run ${pc.cyan("npx strapi2front sync")} to generate files`,
+        `  2. Import from ${pc.cyan(answers.outputDir + "/collections/*" + fileExt)}`,
+        `  3. Import services from ${pc.cyan(answers.outputDir + "/collections/*.service" + fileExt)}`,
       ].join("\n"),
       "Setup complete!"
     );
@@ -164,11 +170,15 @@ function generateConfigFile(answers: {
   strapiUrl: string;
   strapiVersion: "v4" | "v5";
   apiPrefix: string;
+  outputFormat: "typescript" | "jsdoc";
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
 }): string {
-  return `import { defineConfig } from "strapi2front";
+  const isTypeScript = answers.outputFormat === "typescript";
+
+  if (isTypeScript) {
+    return `import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   // Strapi connection
@@ -177,6 +187,9 @@ export default defineConfig({
 
   // API prefix (default: "/api")
   apiPrefix: "${answers.apiPrefix}",
+
+  // Output format: "typescript" (.ts) or "jsdoc" (.js with JSDoc)
+  outputFormat: "typescript",
 
   // Output configuration
   output: {
@@ -192,6 +205,42 @@ export default defineConfig({
     types: true,
     services: ${answers.generateServices},
     actions: ${answers.generateActions},
+  },
+
+  // Strapi version
+  strapiVersion: "${answers.strapiVersion}",
+});
+`;
+  }
+
+  // JSDoc config (JavaScript)
+  return `// @ts-check
+const { defineConfig } = require("strapi2front");
+
+module.exports = defineConfig({
+  // Strapi connection
+  url: process.env.STRAPI_URL || "${answers.strapiUrl}",
+  token: process.env.STRAPI_TOKEN,
+
+  // API prefix (default: "/api")
+  apiPrefix: "${answers.apiPrefix}",
+
+  // Output format: "typescript" (.ts) or "jsdoc" (.js with JSDoc)
+  outputFormat: "jsdoc",
+
+  // Output configuration
+  output: {
+    path: "${answers.outputDir}",
+    types: "types",
+    services: "services",
+    structure: 'by-feature' // or 'by-layer'
+  },
+
+  // Features to generate
+  features: {
+    types: true,
+    services: ${answers.generateServices},
+    actions: false, // Actions require TypeScript
   },
 
   // Strapi version

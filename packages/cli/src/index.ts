@@ -1,6 +1,6 @@
 // Re-export from core for user config files
 export { defineConfig } from '@strapi2front/core';
-export type { StrapiIntegrateConfig } from '@strapi2front/core';
+export type { StrapiIntegrateConfig, StrapiIntegrateConfigInput } from '@strapi2front/core';
 
 // CLI exports
 export { initCommand } from './commands/init.js';

@@ -21,6 +21,11 @@ export interface ByFeatureGeneratorOptions {
   blocksRendererInstalled?: boolean;
   strapiVersion?: "v4" | "v5";
   apiPrefix?: string;
+  /**
+   * Output format: 'typescript' for .ts files, 'jsdoc' for .js with JSDoc annotations
+   * @default 'typescript'
+   */
+  outputFormat?: "typescript" | "jsdoc";
 }
 
 /**
@@ -49,8 +54,18 @@ export async function generateByFeature(
   locales: StrapiLocale[],
   options: ByFeatureGeneratorOptions
 ): Promise<string[]> {
-  const { outputDir, features, blocksRendererInstalled = false, strapiVersion = "v5", apiPrefix = "/api" } = options;
+  const {
+    outputDir,
+    features,
+    blocksRendererInstalled = false,
+    strapiVersion = "v5",
+    apiPrefix = "/api",
+    outputFormat = "typescript"
+  } = options;
   const generatedFiles: string[] = [];
+
+  // File extension based on output format
+  const ext = outputFormat === "jsdoc" ? "js" : "ts";
 
   // Ensure directories exist
   await ensureDir(path.join(outputDir, 'collections'));
@@ -62,18 +77,27 @@ export async function generateByFeature(
   const sharedDir = path.join(outputDir, 'shared');
 
   // Utils
-  const utilsPath = path.join(sharedDir, 'utils.ts');
-  await writeFile(utilsPath, await formatCode(generateUtilityTypes(blocksRendererInstalled, strapiVersion)));
+  const utilsPath = path.join(sharedDir, `utils.${ext}`);
+  const utilsContent = outputFormat === "jsdoc"
+    ? generateUtilityTypesJSDoc(blocksRendererInstalled, strapiVersion)
+    : generateUtilityTypes(blocksRendererInstalled, strapiVersion);
+  await writeFile(utilsPath, await formatCode(utilsContent));
   generatedFiles.push(utilsPath);
 
   // Client
-  const clientPath = path.join(sharedDir, 'client.ts');
-  await writeFile(clientPath, await formatCode(generateClient(strapiVersion, apiPrefix)));
+  const clientPath = path.join(sharedDir, `client.${ext}`);
+  const clientContent = outputFormat === "jsdoc"
+    ? generateClientJSDoc(strapiVersion, apiPrefix)
+    : generateClient(strapiVersion, apiPrefix);
+  await writeFile(clientPath, await formatCode(clientContent));
   generatedFiles.push(clientPath);
 
   // Locales
-  const localesPath = path.join(sharedDir, 'locales.ts');
-  await writeFile(localesPath, await formatCode(generateLocalesFile(locales)));
+  const localesPath = path.join(sharedDir, `locales.${ext}`);
+  const localesContent = outputFormat === "jsdoc"
+    ? generateLocalesFileJSDoc(locales)
+    : generateLocalesFile(locales);
+  await writeFile(localesPath, await formatCode(localesContent));
   generatedFiles.push(localesPath);
 
   // Generate collection files
@@ -82,19 +106,25 @@ export async function generateByFeature(
     await ensureDir(featureDir);
 
     if (features.types) {
-      const typesPath = path.join(featureDir, 'types.ts');
-      await writeFile(typesPath, await formatCode(generateCollectionTypes(collection, schema)));
+      const typesPath = path.join(featureDir, `types.${ext}`);
+      const content = outputFormat === "jsdoc"
+        ? generateCollectionTypesJSDoc(collection, schema)
+        : generateCollectionTypes(collection, schema);
+      await writeFile(typesPath, await formatCode(content));
       generatedFiles.push(typesPath);
     }
 
     if (features.services) {
-      const servicePath = path.join(featureDir, 'service.ts');
-      await writeFile(servicePath, await formatCode(generateCollectionService(collection, strapiVersion)));
+      const servicePath = path.join(featureDir, `service.${ext}`);
+      const content = outputFormat === "jsdoc"
+        ? generateCollectionServiceJSDoc(collection, strapiVersion)
+        : generateCollectionService(collection, strapiVersion);
+      await writeFile(servicePath, await formatCode(content));
       generatedFiles.push(servicePath);
     }
 
     if (features.actions) {
-      const actionsPath = path.join(featureDir, 'actions.ts');
+      const actionsPath = path.join(featureDir, `actions.${ext}`);
       await writeFile(actionsPath, await formatCode(generateCollectionActions(collection, strapiVersion)));
       generatedFiles.push(actionsPath);
     }
@@ -106,22 +136,31 @@ export async function generateByFeature(
     await ensureDir(featureDir);
 
     if (features.types) {
-      const typesPath = path.join(featureDir, 'types.ts');
-      await writeFile(typesPath, await formatCode(generateSingleTypes(single, schema)));
+      const typesPath = path.join(featureDir, `types.${ext}`);
+      const content = outputFormat === "jsdoc"
+        ? generateSingleTypesJSDoc(single, schema)
+        : generateSingleTypes(single, schema);
+      await writeFile(typesPath, await formatCode(content));
       generatedFiles.push(typesPath);
     }
 
     if (features.services) {
-      const servicePath = path.join(featureDir, 'service.ts');
-      await writeFile(servicePath, await formatCode(generateSingleService(single, strapiVersion)));
+      const servicePath = path.join(featureDir, `service.${ext}`);
+      const content = outputFormat === "jsdoc"
+        ? generateSingleServiceJSDoc(single, strapiVersion)
+        : generateSingleService(single, strapiVersion);
+      await writeFile(servicePath, await formatCode(content));
       generatedFiles.push(servicePath);
     }
   }
 
   // Generate component files
   for (const component of schema.components) {
-    const componentPath = path.join(outputDir, 'components', `${toKebabCase(component.name)}.ts`);
-    await writeFile(componentPath, await formatCode(generateComponentTypes(component, schema)));
+    const componentPath = path.join(outputDir, 'components', `${toKebabCase(component.name)}.${ext}`);
+    const content = outputFormat === "jsdoc"
+      ? generateComponentTypesJSDoc(component, schema)
+      : generateComponentTypes(component, schema);
+    await writeFile(componentPath, await formatCode(content));
     generatedFiles.push(componentPath);
   }
 
@@ -1187,5 +1226,1079 @@ export const ${actionPrefix}Actions = {
     },
   }),
 };
+`;
+}
+
+// ============================================
+// JSDoc Generators
+// ============================================
+
+function generateUtilityTypesJSDoc(blocksRendererInstalled: boolean, strapiVersion: "v4" | "v5"): string {
+  const isV4 = strapiVersion === "v4";
+
+  const blocksContentType = isV4
+    ? `/**
+ * Rich text content (Strapi v4)
+ * Can be markdown string or custom JSON structure
+ * @typedef {string} RichTextContent
+ */`
+    : blocksRendererInstalled
+    ? `// BlocksContent - import from '@strapi/blocks-react-renderer' for full type support`
+    : `/**
+ * Blocks content type (Strapi v5 rich text)
+ *
+ * For full type support and rendering, install:
+ * npm install @strapi/blocks-react-renderer
+ *
+ * Then re-run: npx strapi2front sync
+ * @typedef {Array<Object>} BlocksContent
+ */`;
+
+  const baseEntity = isV4
+    ? `/**
+ * @typedef {Object} StrapiBaseEntity
+ * @property {number} id
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ * @property {string|null} publishedAt
+ */`
+    : `/**
+ * @typedef {Object} StrapiBaseEntity
+ * @property {number} id
+ * @property {string} documentId
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ * @property {string|null} publishedAt
+ */`;
+
+  const mediaType = isV4
+    ? `/**
+ * @typedef {Object} StrapiMedia
+ * @property {number} id
+ * @property {string} name
+ * @property {string|null} alternativeText
+ * @property {string|null} caption
+ * @property {number} width
+ * @property {number} height
+ * @property {Object|null} formats
+ * @property {StrapiMediaFormat} [formats.thumbnail]
+ * @property {StrapiMediaFormat} [formats.small]
+ * @property {StrapiMediaFormat} [formats.medium]
+ * @property {StrapiMediaFormat} [formats.large]
+ * @property {string} hash
+ * @property {string} ext
+ * @property {string} mime
+ * @property {number} size
+ * @property {string} url
+ * @property {string|null} previewUrl
+ * @property {string} provider
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ */`
+    : `/**
+ * @typedef {Object} StrapiMedia
+ * @property {number} id
+ * @property {string} documentId
+ * @property {string} name
+ * @property {string|null} alternativeText
+ * @property {string|null} caption
+ * @property {number} width
+ * @property {number} height
+ * @property {Object|null} formats
+ * @property {StrapiMediaFormat} [formats.thumbnail]
+ * @property {StrapiMediaFormat} [formats.small]
+ * @property {StrapiMediaFormat} [formats.medium]
+ * @property {StrapiMediaFormat} [formats.large]
+ * @property {string} hash
+ * @property {string} ext
+ * @property {string} mime
+ * @property {number} size
+ * @property {string} url
+ * @property {string|null} previewUrl
+ * @property {string} provider
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ */`;
+
+  const v4RawResponseTypes = isV4 ? `
+
+/**
+ * Strapi v4 raw API response item (with nested attributes)
+ * @template T
+ * @typedef {Object} StrapiV4RawItem
+ * @property {number} id
+ * @property {Omit<T, 'id'>} attributes
+ */
+
+/**
+ * Strapi v4 raw API response
+ * @template T
+ * @typedef {Object} StrapiV4RawResponse
+ * @property {StrapiV4RawItem<T>} data
+ * @property {Object} meta
+ */
+
+/**
+ * Strapi v4 raw list response
+ * @template T
+ * @typedef {Object} StrapiV4RawListResponse
+ * @property {StrapiV4RawItem<T>[]} data
+ * @property {Object} meta
+ * @property {StrapiPagination} meta.pagination
+ */
+
+/**
+ * Flatten Strapi v4 response item
+ * @template T
+ * @param {StrapiV4RawItem<T>} item
+ * @returns {T}
+ */
+function flattenV4Response(item) {
+  return { id: item.id, ...item.attributes };
+}
+
+/**
+ * Flatten Strapi v4 list response
+ * @template T
+ * @param {StrapiV4RawItem<T>[]} items
+ * @returns {T[]}
+ */
+function flattenV4ListResponse(items) {
+  return items.map(item => flattenV4Response(item));
+}
+
+module.exports = { flattenV4Response, flattenV4ListResponse };` : '';
+
+  return `// @ts-check
+/**
+ * Strapi utility types
+ * Generated by strapi2front
+ * Strapi version: ${strapiVersion}
+ */
+
+${mediaType}
+
+/**
+ * @typedef {Object} StrapiMediaFormat
+ * @property {string} name
+ * @property {string} hash
+ * @property {string} ext
+ * @property {string} mime
+ * @property {number} width
+ * @property {number} height
+ * @property {number} size
+ * @property {string} url
+ */
+
+/**
+ * @typedef {Object} StrapiPagination
+ * @property {number} page
+ * @property {number} pageSize
+ * @property {number} pageCount
+ * @property {number} total
+ */
+
+/**
+ * @template T
+ * @typedef {Object} StrapiResponse
+ * @property {T} data
+ * @property {Object} meta
+ * @property {StrapiPagination} [meta.pagination]
+ */
+
+/**
+ * @template T
+ * @typedef {Object} StrapiListResponse
+ * @property {T[]} data
+ * @property {Object} meta
+ * @property {StrapiPagination} meta.pagination
+ */
+
+${baseEntity}
+${v4RawResponseTypes}
+${blocksContentType}
+
+module.exports = {};
+`;
+}
+
+function generateClientJSDoc(strapiVersion: "v4" | "v5", apiPrefix: string = "/api"): string {
+  const isV4 = strapiVersion === "v4";
+  const normalizedPrefix = apiPrefix.startsWith('/') ? apiPrefix : '/' + apiPrefix;
+
+  if (isV4) {
+    return `// @ts-check
+/**
+ * Strapi Client (v4)
+ * Generated by strapi2front
+ */
+
+const Strapi = require('strapi-sdk-js').default;
+
+// Initialize the Strapi client
+const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+const strapiToken = process.env.STRAPI_TOKEN;
+const strapiApiPrefix = process.env.STRAPI_API_PREFIX || '${normalizedPrefix}';
+
+const strapi = new Strapi({
+  url: strapiUrl,
+  prefix: strapiApiPrefix,
+  axiosOptions: {
+    headers: strapiToken ? {
+      Authorization: \`Bearer \${strapiToken}\`,
+    } : {},
+  },
+});
+
+/** @type {import('./utils').StrapiPagination} */
+const defaultPagination = {
+  page: 1,
+  pageSize: 25,
+  pageCount: 1,
+  total: 0,
+};
+
+/**
+ * Flatten a Strapi v4 response item (merges id with attributes)
+ * @template T
+ * @param {{ id: number, attributes: Omit<T, 'id'> }} item
+ * @returns {T}
+ */
+function flattenItem(item) {
+  return { id: item.id, ...item.attributes };
+}
+
+/**
+ * Recursively flatten nested relations in Strapi v4 response
+ * @template T
+ * @param {T} data
+ * @returns {T}
+ */
+function flattenRelations(data) {
+  if (data === null || data === undefined) return data;
+  if (Array.isArray(data)) {
+    return /** @type {T} */ (data.map(item => flattenRelations(item)));
+  }
+  if (typeof data === 'object') {
+    /** @type {Record<string, unknown>} */
+    const result = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value && typeof value === 'object' && 'data' in value) {
+        const relationData = /** @type {{ data: unknown }} */ (value).data;
+        if (relationData === null) {
+          result[key] = null;
+        } else if (Array.isArray(relationData)) {
+          result[key] = relationData.map((item) =>
+            flattenRelations(flattenItem(item))
+          );
+        } else if (typeof relationData === 'object' && 'id' in relationData && 'attributes' in relationData) {
+          result[key] = flattenRelations(flattenItem(/** @type {{ id: number, attributes: object }} */ (relationData)));
+        } else {
+          result[key] = flattenRelations(value);
+        }
+      } else {
+        result[key] = flattenRelations(value);
+      }
+    }
+    return /** @type {T} */ (result);
+  }
+  return data;
+}
+
+/**
+ * Helper to get typed collection
+ * @template T
+ * @param {string} pluralName
+ */
+function collection(pluralName) {
+  return {
+    /**
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T[], meta: { pagination: import('./utils').StrapiPagination } }>}
+     */
+    async find(params) {
+      const response = await strapi.find(pluralName, params);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T[]} */
+      const data = Array.isArray(rawData)
+        ? rawData.map(item => flattenRelations(flattenItem(item)))
+        : [];
+      /** @type {any} */
+      const rawMeta = response.meta;
+      /** @type {any} */
+      const rawPag = rawMeta?.pagination;
+      /** @type {import('./utils').StrapiPagination} */
+      const pagination = {
+        page: rawPag?.page ?? defaultPagination.page,
+        pageSize: rawPag?.pageSize ?? defaultPagination.pageSize,
+        pageCount: rawPag?.pageCount ?? defaultPagination.pageCount,
+        total: rawPag?.total ?? defaultPagination.total,
+      };
+      return { data, meta: { pagination } };
+    },
+    /**
+     * @param {number|string} id
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T }>}
+     */
+    async findOne(id, params) {
+      const response = await strapi.findOne(pluralName, String(id), params);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const data = flattenRelations(flattenItem(rawData));
+      return { data };
+    },
+    /**
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async create(data) {
+      const response = await strapi.create(pluralName, data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = flattenRelations(flattenItem(rawData));
+      return { data: result };
+    },
+    /**
+     * @param {number|string} id
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async update(id, data) {
+      const response = await strapi.update(pluralName, String(id), data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = flattenRelations(flattenItem(rawData));
+      return { data: result };
+    },
+    /**
+     * @param {number|string} id
+     * @returns {Promise<void>}
+     */
+    async delete(id) {
+      await strapi.delete(pluralName, String(id));
+    },
+  };
+}
+
+/**
+ * Helper to get typed single type
+ * @template T
+ * @param {string} singularName
+ */
+function single(singularName) {
+  return {
+    /**
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T }>}
+     */
+    async find(params) {
+      const response = await strapi.find(singularName, params);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const data = flattenRelations(flattenItem(rawData));
+      return { data };
+    },
+    /**
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async update(data) {
+      const response = await strapi.update(singularName, String(1), data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = flattenRelations(flattenItem(rawData));
+      return { data: result };
+    },
+    /**
+     * @returns {Promise<void>}
+     */
+    async delete() {
+      await strapi.delete(singularName, String(1));
+    },
+  };
+}
+
+module.exports = { strapi, collection, single };
+`;
+  }
+
+  return `// @ts-check
+/**
+ * Strapi Client (v5)
+ * Generated by strapi2front
+ */
+
+const Strapi = require('strapi-sdk-js').default;
+
+// Initialize the Strapi client
+const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+const strapiToken = process.env.STRAPI_TOKEN;
+const strapiApiPrefix = process.env.STRAPI_API_PREFIX || '${normalizedPrefix}';
+
+const strapi = new Strapi({
+  url: strapiUrl,
+  prefix: strapiApiPrefix,
+  axiosOptions: {
+    headers: strapiToken ? {
+      Authorization: \`Bearer \${strapiToken}\`,
+    } : {},
+  },
+});
+
+/** @type {import('./utils').StrapiPagination} */
+const defaultPagination = {
+  page: 1,
+  pageSize: 25,
+  pageCount: 1,
+  total: 0,
+};
+
+/**
+ * Helper to get typed collection
+ * @template T
+ * @param {string} pluralName
+ */
+function collection(pluralName) {
+  return {
+    /**
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T[], meta: { pagination: import('./utils').StrapiPagination } }>}
+     */
+    async find(params) {
+      const response = await strapi.find(pluralName, params);
+      /** @type {any} */
+      const rawMeta = response.meta;
+      /** @type {any} */
+      const rawPag = rawMeta?.pagination;
+      /** @type {import('./utils').StrapiPagination} */
+      const pagination = {
+        page: rawPag?.page ?? defaultPagination.page,
+        pageSize: rawPag?.pageSize ?? defaultPagination.pageSize,
+        pageCount: rawPag?.pageCount ?? defaultPagination.pageCount,
+        total: rawPag?.total ?? defaultPagination.total,
+      };
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T[]} */
+      const data = Array.isArray(rawData) ? rawData : [];
+      return { data, meta: { pagination } };
+    },
+    /**
+     * @param {string} documentId
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T }>}
+     */
+    async findOne(documentId, params) {
+      const response = await strapi.findOne(pluralName, documentId, params);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const data = rawData;
+      return { data };
+    },
+    /**
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async create(data) {
+      const response = await strapi.create(pluralName, data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = rawData;
+      return { data: result };
+    },
+    /**
+     * @param {string} documentId
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async update(documentId, data) {
+      const response = await strapi.update(pluralName, documentId, data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = rawData;
+      return { data: result };
+    },
+    /**
+     * @param {string} documentId
+     * @returns {Promise<void>}
+     */
+    async delete(documentId) {
+      await strapi.delete(pluralName, documentId);
+    },
+  };
+}
+
+/**
+ * Helper to get typed single type
+ * @template T
+ * @param {string} singularName
+ */
+function single(singularName) {
+  return {
+    /**
+     * @param {Record<string, unknown>} [params]
+     * @returns {Promise<{ data: T }>}
+     */
+    async find(params) {
+      const response = await strapi.find(singularName, params);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const data = rawData;
+      return { data };
+    },
+    /**
+     * @param {{ data: Partial<T> }} data
+     * @returns {Promise<{ data: T }>}
+     */
+    async update(data) {
+      const response = await strapi.update(singularName, String(1), data.data);
+      /** @type {any} */
+      const rawData = response.data;
+      /** @type {T} */
+      const result = rawData;
+      return { data: result };
+    },
+    /**
+     * @returns {Promise<void>}
+     */
+    async delete() {
+      await strapi.delete(singularName, String(1));
+    },
+  };
+}
+
+module.exports = { strapi, collection, single };
+`;
+}
+
+function generateLocalesFileJSDoc(locales: StrapiLocale[]): string {
+  if (locales.length === 0) {
+    return `// @ts-check
+/**
+ * Strapi locales
+ * Generated by strapi2front
+ * Note: i18n is not enabled in Strapi
+ */
+
+/** @type {readonly string[]} */
+const locales = [];
+
+/** @typedef {string} Locale */
+
+/** @type {string} */
+const defaultLocale = 'en';
+
+/** @type {Record<string, string>} */
+const localeNames = {};
+
+/**
+ * @param {string} _code
+ * @returns {boolean}
+ */
+function isValidLocale(_code) {
+  return true;
+}
+
+/**
+ * @param {string} code
+ * @returns {string}
+ */
+function getLocaleName(code) {
+  return code;
+}
+
+module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };
+`;
+  }
+
+  const localeCodes = locales.map(l => l.code);
+  const defaultLocale = locales.find(l => l.isDefault)?.code || locales[0]?.code || 'en';
+
+  return `// @ts-check
+/**
+ * Strapi locales
+ * Generated by strapi2front
+ */
+
+/** @type {readonly [${localeCodes.map(c => `'${c}'`).join(', ')}]} */
+const locales = [${localeCodes.map(c => `'${c}'`).join(', ')}];
+
+/** @typedef {${localeCodes.map(c => `'${c}'`).join(' | ')}} Locale */
+
+/** @type {Locale} */
+const defaultLocale = '${defaultLocale}';
+
+/** @type {Record<Locale, string>} */
+const localeNames = {
+${locales.map(l => `  '${l.code}': '${l.name}'`).join(',\n')}
+};
+
+/**
+ * @param {string} code
+ * @returns {boolean}
+ */
+function isValidLocale(code) {
+  /** @type {readonly string[]} */
+  const localeList = locales;
+  return localeList.includes(code);
+}
+
+/**
+ * @param {Locale} code
+ * @returns {string}
+ */
+function getLocaleName(code) {
+  return localeNames[code] || code;
+}
+
+module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };
+`;
+}
+
+// ============================================
+// JSDoc Collection Types Generation
+// ============================================
+
+function generateCollectionTypesJSDoc(collection: CollectionType, schema: ParsedSchema): string {
+  const typeName = toPascalCase(collection.singularName);
+  const attributes = generateJSDocAttributes(collection.attributes, schema, 'collection');
+
+  return `// @ts-check
+/**
+ * ${collection.displayName}
+ * ${collection.description || ''}
+ * Generated by strapi2front
+ */
+
+/**
+ * @typedef {import('../../shared/utils').StrapiBaseEntity & ${typeName}Attributes} ${typeName}
+ */
+
+/**
+ * @typedef {Object} ${typeName}Attributes
+${attributes}
+ */
+
+/**
+ * @typedef {Object} ${typeName}Filters
+ * @property {number|{$eq?: number, $ne?: number, $in?: number[], $notIn?: number[]}} [id]
+ * @property {string|{$eq?: string, $ne?: string}} [documentId]
+ * @property {string|{$eq?: string, $gt?: string, $gte?: string, $lt?: string, $lte?: string}} [createdAt]
+ * @property {string|{$eq?: string, $gt?: string, $gte?: string, $lt?: string, $lte?: string}} [updatedAt]
+ * @property {string|null|{$eq?: string, $ne?: string, $null?: boolean}} [publishedAt]
+ * @property {${typeName}Filters[]} [$and]
+ * @property {${typeName}Filters[]} [$or]
+ * @property {${typeName}Filters} [$not]
+ */
+
+module.exports = {};
+`;
+}
+
+function generateSingleTypesJSDoc(single: SingleType, schema: ParsedSchema): string {
+  const typeName = toPascalCase(single.singularName);
+  const attributes = generateJSDocAttributes(single.attributes, schema, 'single');
+
+  return `// @ts-check
+/**
+ * ${single.displayName}
+ * ${single.description || ''}
+ * Generated by strapi2front
+ */
+
+/**
+ * @typedef {import('../../shared/utils').StrapiBaseEntity & ${typeName}Attributes} ${typeName}
+ */
+
+/**
+ * @typedef {Object} ${typeName}Attributes
+${attributes}
+ */
+
+module.exports = {};
+`;
+}
+
+function generateComponentTypesJSDoc(component: ComponentType, schema: ParsedSchema): string {
+  const typeName = toPascalCase(component.name);
+  const attributes = generateJSDocAttributes(component.attributes, schema, 'component');
+
+  return `// @ts-check
+/**
+ * ${component.displayName} component
+ * Category: ${component.category}
+ * ${component.description || ''}
+ * Generated by strapi2front
+ */
+
+/**
+ * @typedef {Object} ${typeName}
+ * @property {number} id
+${attributes}
+ */
+
+module.exports = {};
+`;
+}
+
+function generateJSDocAttributes(
+  attributes: Record<string, Attribute>,
+  schema: ParsedSchema,
+  context: 'collection' | 'single' | 'component'
+): string {
+  const lines: string[] = [];
+  const relativePrefix = context === 'component' ? '..' : '../..';
+
+  for (const [name, attr] of Object.entries(attributes)) {
+    const jsType = attributeToJSDocType(attr, schema, relativePrefix);
+    const optional = attr.required ? '' : '[';
+    const optionalEnd = attr.required ? '' : ']';
+    lines.push(` * @property {${jsType}} ${optional}${name}${optionalEnd}`);
+  }
+
+  return lines.join('\n');
+}
+
+function attributeToJSDocType(
+  attr: Attribute,
+  schema: ParsedSchema,
+  relativePrefix: string
+): string {
+  switch (attr.type) {
+    case 'string':
+    case 'text':
+    case 'richtext':
+    case 'email':
+    case 'password':
+    case 'uid':
+      return 'string';
+    case 'blocks':
+      return 'Array<Object>';
+    case 'integer':
+    case 'biginteger':
+    case 'float':
+    case 'decimal':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'date':
+    case 'time':
+    case 'datetime':
+    case 'timestamp':
+      return 'string';
+    case 'json':
+      return 'Object';
+    case 'enumeration':
+      if ('enum' in attr && attr.enum) {
+        return attr.enum.map(v => `'${v}'`).join('|');
+      }
+      return 'string';
+    case 'media':
+      if ('multiple' in attr && attr.multiple) {
+        return `import("${relativePrefix}/shared/utils").StrapiMedia[]`;
+      }
+      return `import("${relativePrefix}/shared/utils").StrapiMedia|null`;
+    case 'relation':
+      if ('target' in attr && attr.target) {
+        const targetName = attr.target.split('.').pop() || 'unknown';
+        const typeName = toPascalCase(targetName);
+        const fileName = toKebabCase(targetName);
+        const isMany = attr.relation === 'oneToMany' || attr.relation === 'manyToMany';
+
+        // Determine if target is a collection or single
+        const isCollection = schema.collections.some(c => c.singularName === targetName);
+        const isSingle = schema.singles.some(s => s.singularName === targetName);
+
+        let importPath: string;
+        if (isCollection) {
+          importPath = `${relativePrefix}/collections/${fileName}/types`;
+        } else if (isSingle) {
+          importPath = `${relativePrefix}/singles/${fileName}/types`;
+        } else {
+          // Fallback - assume collection
+          importPath = `${relativePrefix}/collections/${fileName}/types`;
+        }
+
+        const importType = `import("${importPath}").${typeName}`;
+        return isMany ? `${importType}[]` : `${importType}|null`;
+      }
+      return 'Object';
+    case 'component':
+      if ('component' in attr && attr.component) {
+        const componentName = attr.component.split('.').pop() || 'unknown';
+        const typeName = toPascalCase(componentName);
+        const fileName = toKebabCase(componentName);
+        const importPath = `${relativePrefix}/components/${fileName}`;
+        const importType = `import("${importPath}").${typeName}`;
+
+        if ('repeatable' in attr && attr.repeatable) {
+          return `${importType}[]`;
+        }
+        return `${importType}|null`;
+      }
+      return 'Object';
+    case 'dynamiczone':
+      if ('components' in attr && attr.components) {
+        const types = attr.components.map(comp => {
+          const componentName = comp.split('.').pop() || 'unknown';
+          const typeName = toPascalCase(componentName);
+          const fileName = toKebabCase(componentName);
+          const importPath = `${relativePrefix}/components/${fileName}`;
+          return `import("${importPath}").${typeName}`;
+        });
+        return `(${types.join('|')})[]`;
+      }
+      return 'Object[]';
+    default:
+      return 'Object';
+  }
+}
+
+// ============================================
+// JSDoc Collection Service Generation
+// ============================================
+
+function generateCollectionServiceJSDoc(collection: CollectionType, strapiVersion: "v4" | "v5"): string {
+  const typeName = toPascalCase(collection.singularName);
+  const serviceName = toCamelCase(collection.singularName) + 'Service';
+  const endpoint = collection.pluralName;
+  const hasSlug = 'slug' in collection.attributes;
+  const { localized, draftAndPublish } = collection;
+  const isV4 = strapiVersion === "v4";
+
+  // V4 uses `id: number`, V5 uses `documentId: string`
+  const idParam = isV4 ? 'id' : 'documentId';
+  const idType = isV4 ? 'number' : 'string';
+
+  return `// @ts-check
+/**
+ * ${collection.displayName} Service
+ * ${collection.description || ''}
+ * Generated by strapi2front
+ * Strapi version: ${strapiVersion}
+ */
+
+const { collection } = require('../../shared/client');
+
+/**
+ * @typedef {Object} FindManyOptions
+ * @property {import('./types').${typeName}Filters} [filters]
+ * @property {Object} [pagination]
+ * @property {number} [pagination.page]
+ * @property {number} [pagination.pageSize]
+ * @property {number} [pagination.start]
+ * @property {number} [pagination.limit]
+ * @property {string|string[]} [sort]
+ * @property {string|string[]|Record<string, unknown>} [populate]${localized ? '\n * @property {string} [locale]' : ''}${draftAndPublish ? "\n * @property {'draft'|'published'} [status]" : ''}
+ */
+
+/**
+ * @typedef {Object} FindOneOptions
+ * @property {string|string[]|Record<string, unknown>} [populate]${localized ? '\n * @property {string} [locale]' : ''}${draftAndPublish ? "\n * @property {'draft'|'published'} [status]" : ''}
+ */
+
+/** @type {ReturnType<typeof collection<import('./types').${typeName}>>} */
+const ${toCamelCase(collection.singularName)}Collection = collection('${endpoint}');
+
+const ${serviceName} = {
+  /**
+   * @param {FindManyOptions} [options]
+   * @returns {Promise<{ data: import('./types').${typeName}[], pagination: import('../../shared/utils').StrapiPagination }>}
+   */
+  async findMany(options = {}) {
+    const response = await ${toCamelCase(collection.singularName)}Collection.find({
+      filters: options.filters,
+      pagination: options.pagination,
+      sort: options.sort,
+      populate: options.populate,${localized ? '\n      locale: options.locale,' : ''}${draftAndPublish ? '\n      status: options.status,' : ''}
+    });
+
+    return {
+      data: response.data,
+      pagination: response.meta.pagination,
+    };
+  },
+
+  /**
+   * @param {Omit<FindManyOptions, 'pagination'>} [options]
+   * @returns {Promise<import('./types').${typeName}[]>}
+   */
+  async findAll(options = {}) {
+    /** @type {import('./types').${typeName}[]} */
+    const allItems = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, pagination } = await this.findMany({
+        ...options,
+        pagination: { page, pageSize: 100 },
+      });
+
+      allItems.push(...data);
+      hasMore = page < pagination.pageCount;
+      page++;
+    }
+
+    return allItems;
+  },
+
+  /**
+   * @param {${idType}} ${idParam}
+   * @param {FindOneOptions} [options]
+   * @returns {Promise<import('./types').${typeName}|null>}
+   */
+  async findOne(${idParam}, options = {}) {
+    try {
+      const response = await ${toCamelCase(collection.singularName)}Collection.findOne(${idParam}, {
+        populate: options.populate,${localized ? '\n        locale: options.locale,' : ''}${draftAndPublish ? '\n        status: options.status,' : ''}
+      });
+
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
+        return null;
+      }
+      throw error;
+    }
+  },
+${hasSlug ? `
+  /**
+   * @param {string} slug
+   * @param {FindOneOptions} [options]
+   * @returns {Promise<import('./types').${typeName}|null>}
+   */
+  async findBySlug(slug, options = {}) {
+    const { data } = await this.findMany({
+      filters: /** @type {import('./types').${typeName}Filters} */ ({ slug: { $eq: slug } }),
+      pagination: { pageSize: 1 },
+      populate: options.populate,${localized ? '\n      locale: options.locale,' : ''}${draftAndPublish ? '\n      status: options.status,' : ''}
+    });
+
+    return data[0] || null;
+  },
+` : ''}
+  /**
+   * @param {Partial<import('./types').${typeName}>} data
+   * @returns {Promise<import('./types').${typeName}>}
+   */
+  async create(data) {
+    const response = await ${toCamelCase(collection.singularName)}Collection.create({ data });
+    return response.data;
+  },
+
+  /**
+   * @param {${idType}} ${idParam}
+   * @param {Partial<import('./types').${typeName}>} data
+   * @returns {Promise<import('./types').${typeName}>}
+   */
+  async update(${idParam}, data) {
+    const response = await ${toCamelCase(collection.singularName)}Collection.update(${idParam}, { data });
+    return response.data;
+  },
+
+  /**
+   * @param {${idType}} ${idParam}
+   * @returns {Promise<void>}
+   */
+  async delete(${idParam}) {
+    await ${toCamelCase(collection.singularName)}Collection.delete(${idParam});
+  },
+
+  /**
+   * @param {import('./types').${typeName}Filters} [filters]
+   * @returns {Promise<number>}
+   */
+  async count(filters) {
+    const { pagination } = await this.findMany({
+      filters,
+      pagination: { pageSize: 1 },
+    });
+
+    return pagination.total;
+  },
+};
+
+module.exports = { ${serviceName} };
+`;
+}
+
+// ============================================
+// JSDoc Single Service Generation
+// ============================================
+
+function generateSingleServiceJSDoc(single: SingleType, strapiVersion: "v4" | "v5"): string {
+  const typeName = toPascalCase(single.singularName);
+  const serviceName = toCamelCase(single.singularName) + 'Service';
+  const endpoint = single.singularName;
+  const { localized, draftAndPublish } = single;
+
+  return `// @ts-check
+/**
+ * ${single.displayName} Service (Single Type)
+ * ${single.description || ''}
+ * Generated by strapi2front
+ * Strapi version: ${strapiVersion}
+ */
+
+const { single } = require('../../shared/client');
+
+/**
+ * @typedef {Object} FindOptions
+ * @property {string|string[]|Record<string, unknown>} [populate]${localized ? '\n * @property {string} [locale]' : ''}${draftAndPublish ? "\n * @property {'draft'|'published'} [status]" : ''}
+ */
+
+/** @type {ReturnType<typeof single<import('./types').${typeName}>>} */
+const ${toCamelCase(single.singularName)}Single = single('${endpoint}');
+
+const ${serviceName} = {
+  /**
+   * @param {FindOptions} [options]
+   * @returns {Promise<import('./types').${typeName}|null>}
+   */
+  async find(options = {}) {
+    try {
+      const response = await ${toCamelCase(single.singularName)}Single.find({
+        populate: options.populate,${localized ? '\n        locale: options.locale,' : ''}${draftAndPublish ? '\n        status: options.status,' : ''}
+      });
+
+      return response.data;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * @param {Partial<import('./types').${typeName}>} data
+   * @returns {Promise<import('./types').${typeName}>}
+   */
+  async update(data) {
+    const response = await ${toCamelCase(single.singularName)}Single.update({ data });
+    return response.data;
+  },
+
+  /**
+   * @returns {Promise<void>}
+   */
+  async delete() {
+    await ${toCamelCase(single.singularName)}Single.delete();
+  },
+};
+
+module.exports = { ${serviceName} };
 `;
 }

@@ -15,9 +15,20 @@ export interface InitPromptAnswers {
   strapiToken: string;
   strapiVersion: "v4" | "v5";
   apiPrefix: string;
+  outputFormat: "typescript" | "jsdoc";
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
+}
+
+/**
+ * Parse version string to get major version number
+ */
+function getMajorVersion(version: string | null): number | null {
+  if (!version) return null;
+  // Remove ^ or ~ prefix and get first number
+  const match = version.replace(/^[\^~]/, "").match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 export async function runInitPrompts(detection: DetectionResults): Promise<InitPromptAnswers | null> {
@@ -33,15 +44,31 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     "Detected Configuration"
   );
 
-  // Check framework support
+  // Track feature availability
+  let canGenerateActions = true;
+
+  // Check framework support for additional features
   if (detection.framework.name === "unknown") {
-    p.cancel("Could not detect a supported framework. Currently only Astro is supported.");
-    return null;
+    // Unknown framework - generate types and services only
+    canGenerateActions = false;
+  } else if (detection.framework.name !== "astro") {
+    // Non-Astro framework - generate types and services only (for now)
+    canGenerateActions = false;
+  } else {
+    // Astro - check version for Actions support (requires v4+)
+    const majorVersion = getMajorVersion(detection.framework.version);
+    if (majorVersion !== null && majorVersion < 4) {
+      p.log.warn(pc.yellow(`Astro v${majorVersion} detected. Upgrade to v4+ to enable Actions.`));
+      canGenerateActions = false;
+    }
   }
 
-  if (detection.framework.name !== "astro") {
-    p.cancel(`${detection.framework.name} is not yet supported. Currently only Astro is supported.`);
-    return null;
+  // Determine output format based on TypeScript support
+  let outputFormat: "typescript" | "jsdoc" = "typescript";
+
+  if (!detection.typescript.enabled) {
+    p.log.info(pc.dim("TypeScript not detected. Files will be generated as JavaScript with JSDoc annotations."));
+    outputFormat = "jsdoc";
   }
 
   // Prompt for Strapi connection
@@ -143,15 +170,38 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     return null;
   }
 
-  // Features to generate
+  // Features to generate - labels depend on output format
+  const isTypeScript = outputFormat === "typescript";
+  const featureOptions = [
+    {
+      value: "types",
+      label: isTypeScript ? "Types" : "Type Definitions",
+      hint: isTypeScript
+        ? "TypeScript interfaces for your content types"
+        : "JSDoc type definitions for your content types"
+    },
+    {
+      value: "services",
+      label: "Services",
+      hint: isTypeScript
+        ? "Typed service functions for data fetching"
+        : "Service functions with JSDoc annotations"
+    },
+  ];
+
+  // Only show Astro Actions if available (requires TypeScript)
+  if (canGenerateActions && isTypeScript) {
+    featureOptions.push({ value: "actions", label: "Astro Actions", hint: "Type-safe actions for client/server" });
+  }
+
+  const initialFeatures = (canGenerateActions && isTypeScript)
+    ? ["types", "services", "actions"]
+    : ["types", "services"];
+
   const features = await p.multiselect({
     message: "What would you like to generate?",
-    options: [
-      { value: "types", label: "Types", hint: "TypeScript interfaces for your content types" },
-      { value: "services", label: "Services", hint: "Typed service functions for data fetching" },
-      { value: "actions", label: "Astro Actions", hint: "Type-safe actions for client/server" },
-    ],
-    initialValues: ["types", "services", "actions"],
+    options: featureOptions,
+    initialValues: initialFeatures,
     required: true,
   });
 
@@ -165,8 +215,9 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     strapiToken: trimmedToken,
     strapiVersion: strapiVersion as "v4" | "v5",
     apiPrefix: apiPrefix,
+    outputFormat: outputFormat,
     outputDir: ((outputDir as string) || "").trim() || "src/strapi",
-    generateActions: (features as string[]).includes("actions"),
+    generateActions: canGenerateActions && isTypeScript && (features as string[]).includes("actions"),
     generateServices: (features as string[]).includes("services"),
   };
 }

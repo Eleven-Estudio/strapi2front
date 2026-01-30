@@ -1,19 +1,52 @@
+/**
+ * Service generator
+ * Supports TypeScript (.ts) and JSDoc (.js) output formats
+ */
+
 import path from 'node:path';
 import type { ParsedSchema, CollectionType, SingleType } from '@strapi2front/core';
+import type { OutputFormat, StrapiVersion } from '../shared/types.js';
 import { formatCode } from '../utils/formatter.js';
 import { writeFile, ensureDir } from '../utils/file.js';
 import { toPascalCase, toCamelCase, toKebabCase } from '../utils/naming.js';
+import { generateJSDocServices } from '../output/jsdoc/services.js';
 
 export interface ServiceGeneratorOptions {
   outputDir: string;
   typesImportPath: string;
-  strapiVersion?: "v4" | "v5";
+  strapiVersion?: StrapiVersion;
+  /**
+   * Output format: 'typescript' for .ts files, 'jsdoc' for .js with JSDoc annotations
+   * @default 'typescript'
+   */
+  outputFormat?: OutputFormat;
 }
 
 /**
  * Generate service files from parsed schema
  */
 export async function generateServices(
+  schema: ParsedSchema,
+  options: ServiceGeneratorOptions
+): Promise<string[]> {
+  const outputFormat = options.outputFormat ?? 'typescript';
+
+  if (outputFormat === 'jsdoc') {
+    return generateJSDocServices(schema, {
+      outputDir: options.outputDir,
+      typesImportPath: options.typesImportPath,
+      strapiVersion: options.strapiVersion,
+    });
+  }
+
+  // Default: TypeScript
+  return generateTypeScriptServices(schema, options);
+}
+
+/**
+ * Generate TypeScript service files
+ */
+async function generateTypeScriptServices(
   schema: ParsedSchema,
   options: ServiceGeneratorOptions
 ): Promise<string[]> {
@@ -46,7 +79,7 @@ export async function generateServices(
 /**
  * Generate service for a collection type
  */
-function generateCollectionService(collection: CollectionType, typesImportPath: string, strapiVersion: "v4" | "v5"): string {
+function generateCollectionService(collection: CollectionType, typesImportPath: string, strapiVersion: StrapiVersion): string {
   const typeName = toPascalCase(collection.singularName);
   const serviceName = toCamelCase(collection.singularName) + 'Service';
   const fileName = toKebabCase(collection.singularName);
@@ -274,7 +307,7 @@ ${findBySlugParams.join('\n')}
 /**
  * Generate service for a single type
  */
-function generateSingleService(single: SingleType, typesImportPath: string, strapiVersion: "v4" | "v5"): string {
+function generateSingleService(single: SingleType, typesImportPath: string, strapiVersion: StrapiVersion): string {
   const typeName = toPascalCase(single.singularName);
   const serviceName = toCamelCase(single.singularName) + 'Service';
   const fileName = toKebabCase(single.singularName);
@@ -372,4 +405,3 @@ ${findParams.join('\n')}
 };
 `;
 }
-

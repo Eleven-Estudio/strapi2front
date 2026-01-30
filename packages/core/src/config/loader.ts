@@ -2,14 +2,14 @@ import { createJiti } from 'jiti';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { config as loadEnv } from 'dotenv';
-import { configSchema, type StrapiIntegrateConfig } from './schema.js';
+import { configSchema, type StrapiIntegrateConfig, type StrapiIntegrateConfigInput } from './schema.js';
 
 const CONFIG_FILES = ['strapi.config.ts', 'strapi.config.js', 'strapi.config.mjs'];
 
 /**
  * Helper function for defining configuration with type safety
  */
-export function defineConfig(config: Partial<StrapiIntegrateConfig>): StrapiIntegrateConfig {
+export function defineConfig(config: StrapiIntegrateConfigInput): StrapiIntegrateConfig {
   return configSchema.parse(config);
 }
 

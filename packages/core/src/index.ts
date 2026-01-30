@@ -1,7 +1,7 @@
 // Config exports
 export { loadConfig, defineConfig } from "./config/loader.js";
 export { configSchema } from "./config/schema.js";
-export type { StrapiIntegrateConfig } from "./config/schema.js";
+export type { StrapiIntegrateConfig, StrapiIntegrateConfigInput } from "./config/schema.js";
 
 // Schema exports
 export { fetchSchema, testConnection, detectStrapiVersion } from "./schema/fetcher.js";

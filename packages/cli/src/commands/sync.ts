@@ -287,19 +287,23 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       }
     }
 
+    // Get output format from config (default to typescript)
+    const outputFormat = config.outputFormat || "typescript";
+
     if (isByFeature) {
       // Generate using by-feature structure (screaming architecture)
-      s.start("Generating files (by-feature structure)...");
+      s.start(`Generating files (by-feature, ${outputFormat})...`);
       const files = await generateByFeature(schema, rawSchema.locales, {
         outputDir: outputPath,
         features: {
           types: config.features.types && (generateAll || Boolean(options.typesOnly)),
           services: config.features.services && (generateAll || Boolean(options.servicesOnly)),
-          actions: config.features.actions && (generateAll || Boolean(options.actionsOnly)),
+          actions: config.features.actions && outputFormat === "typescript" && (generateAll || Boolean(options.actionsOnly)),
         },
         blocksRendererInstalled,
         strapiVersion: config.strapiVersion,
         apiPrefix: config.apiPrefix,
+        outputFormat,
       });
       generatedFiles.push(...files);
       s.stop(`Generated ${files.length} files`);
@@ -309,12 +313,13 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       // Generate types
       if (generateAll || options.typesOnly) {
         if (config.features.types) {
-          s.start("Generating types...");
+          s.start(`Generating types (${outputFormat})...`);
           const typesPath = path.join(outputPath, config.output.types);
           const files = await generateTypes(schema, {
             outputDir: typesPath,
             blocksRendererInstalled,
             strapiVersion: config.strapiVersion,
+            outputFormat,
           });
           generatedFiles.push(...files);
           s.stop(`Generated ${files.length} type files`);
@@ -344,21 +349,22 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       // Generate services
       if (generateAll || options.servicesOnly) {
         if (config.features.services) {
-          s.start("Generating services...");
+          s.start(`Generating services (${outputFormat})...`);
           const servicesPath = path.join(outputPath, config.output.services);
           const typesImportPath = path.relative(servicesPath, path.join(outputPath, config.output.types)).replace(/\\/g, "/") || ".";
           const files = await generateServices(schema, {
             outputDir: servicesPath,
             typesImportPath: typesImportPath.startsWith(".") ? typesImportPath : "./" + typesImportPath,
             strapiVersion: config.strapiVersion,
+            outputFormat,
           });
           generatedFiles.push(...files);
           s.stop(`Generated ${files.length} service files`);
         }
       }
 
-      // Generate actions
-      if (generateAll || options.actionsOnly) {
+      // Generate actions (only for TypeScript projects)
+      if ((generateAll || options.actionsOnly) && outputFormat === "typescript") {
         if (config.features.actions) {
           s.start("Generating Astro actions...");
           const actionsPath = path.join(outputPath, config.output.actions);
