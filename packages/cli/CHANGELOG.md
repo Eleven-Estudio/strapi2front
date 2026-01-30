@@ -1,5 +1,14 @@
 # strapi2front
 
+## 0.1.3
+
+### Patch Changes
+
+- fix: add spinner animation during dependency installation
+
+  Changed from sync to async execution so spinners animate while
+  dependencies are being installed, providing visual feedback.
+
 ## 0.1.2
 
 ### Patch Changes
