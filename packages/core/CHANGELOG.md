@@ -1,5 +1,16 @@
 # @strapi2front/core
 
+## 0.4.0
+
+### Minor Changes
+
+- Add ES Modules support for JSDoc output
+  - Auto-detect module type from package.json "type" field or .mjs config files
+  - Generate `import`/`export` syntax for ESM projects
+  - Generate `require`/`module.exports` syntax for CommonJS projects
+  - Add `moduleType` config option for manual override
+  - Next.js and other modern frameworks with ESM are now fully supported
+
 ## 0.3.0
 
 ### Minor Changes
