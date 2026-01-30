@@ -1,5 +1,12 @@
 # @strapi2front/generators
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @strapi2front/core@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes

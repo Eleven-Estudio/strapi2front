@@ -47,7 +47,8 @@ import { defineConfig } from "strapi2front";
 export default defineConfig({
   url: process.env.STRAPI_URL || "http://localhost:1337",
   token: process.env.STRAPI_TOKEN,
-  apiPrefix: "/api"
+  apiPrefix: "/api",
+  outputFormat: "typescript",
   output: {
     path: "src/strapi",
     types: "types",
