@@ -1,5 +1,11 @@
 # strapi2front
 
+## 0.2.2
+
+### Patch Changes
+
+- c33e44b: Move API prefix prompt from sync to init command for better UX
+
 ## 0.2.1
 
 ### Patch Changes
