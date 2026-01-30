@@ -1465,7 +1465,9 @@ const defaultPagination = {
  * @returns {T}
  */
 function flattenItem(item) {
-  return { id: item.id, ...item.attributes };
+  /** @type {any} */
+  const merged = { id: item.id, ...item.attributes };
+  return merged;
 }
 
 /**
@@ -1477,22 +1479,26 @@ function flattenItem(item) {
 function flattenRelations(data) {
   if (data === null || data === undefined) return data;
   if (Array.isArray(data)) {
-    return /** @type {T} */ (data.map(item => flattenRelations(item)));
+    /** @type {any} */
+    const mapped = data.map(item => flattenRelations(item));
+    return mapped;
   }
   if (typeof data === 'object') {
     /** @type {Record<string, unknown>} */
     const result = {};
     for (const [key, value] of Object.entries(data)) {
       if (value && typeof value === 'object' && 'data' in value) {
-        const relationData = /** @type {{ data: unknown }} */ (value).data;
+        /** @type {any} */
+        const wrapper = value;
+        const relationData = wrapper.data;
         if (relationData === null) {
           result[key] = null;
         } else if (Array.isArray(relationData)) {
           result[key] = relationData.map((item) =>
             flattenRelations(flattenItem(item))
           );
-        } else if (typeof relationData === 'object' && 'id' in relationData && 'attributes' in relationData) {
-          result[key] = flattenRelations(flattenItem(/** @type {{ id: number, attributes: object }} */ (relationData)));
+        } else if (typeof relationData === 'object' && relationData !== null && 'id' in relationData && 'attributes' in relationData) {
+          result[key] = flattenRelations(flattenItem(relationData));
         } else {
           result[key] = flattenRelations(value);
         }
@@ -1500,7 +1506,9 @@ function flattenRelations(data) {
         result[key] = flattenRelations(value);
       }
     }
-    return /** @type {T} */ (result);
+    /** @type {any} */
+    const typed = result;
+    return typed;
   }
   return data;
 }
