@@ -1,6 +1,6 @@
 {
   "name": "strapi2front",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Generate TypeScript types, services, and framework actions from your Strapi schema",
   "type": "module",
   "bin": {
