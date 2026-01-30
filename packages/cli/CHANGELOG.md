@@ -1,5 +1,11 @@
 # strapi2front
 
+## 0.2.1
+
+### Patch Changes
+
+- 52f3f7c: Add interactive prompt for API prefix during sync command
+
 ## 0.2.0
 
 ### Minor Changes
