@@ -1,6 +1,6 @@
 {
   "name": "@strapi2front/core",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Core utilities and configuration for strapi2front",
   "type": "module",
   "exports": {

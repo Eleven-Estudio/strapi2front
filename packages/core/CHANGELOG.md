@@ -1,5 +1,15 @@
 # @strapi2front/core
 
+## 0.2.0
+
+### Minor Changes
+
+- feat: add configurable API prefix support
+
+  Users can now configure custom API prefixes for Strapi instances
+  that don't use the default "/api" prefix. Set `apiPrefix` in config
+  or use `STRAPI_API_PREFIX` environment variable.
+
 ## 0.1.5
 
 ### Patch Changes
