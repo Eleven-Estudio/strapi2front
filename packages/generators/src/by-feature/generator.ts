@@ -1354,7 +1354,9 @@ function generateUtilityTypesJSDoc(blocksRendererInstalled: boolean, strapiVersi
  * @returns {T}
  */
 function flattenV4Response(item) {
-  return { id: item.id, ...item.attributes };
+  /** @type {any} */
+  const merged = { id: item.id, ...item.attributes };
+  return merged;
 }
 
 /**
