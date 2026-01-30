@@ -1,5 +1,19 @@
 # strapi2front
 
+## 0.4.1
+
+### Patch Changes
+
+- Generate strapi.config.js with correct ESM/CommonJS syntax
+  - Auto-detect module type and generate appropriate syntax
+  - ESM projects get `import`/`export default` syntax
+  - CommonJS projects get `require`/`module.exports` syntax
+  - Support loading .cjs config files
+
+- Updated dependencies
+  - @strapi2front/core@0.4.1
+  - @strapi2front/generators@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
