@@ -67,7 +67,9 @@ const commandId = `cmd-${Math.random().toString(36).slice(2, 9)}`;
 
 // Prepare data based on type
 const isFile = props.type === 'file';
-const highlightedCode = isFile ? highlightCode(props.code, props.lang ?? 'typescript', props.showLineNumbers ?? false) : '';
+const highlightedCode = isFile
+  ? highlightCode(props.code, props.lang ?? 'typescript', props.showLineNumbers ?? false)
+  : '';
 const filename = isFile ? props.filename : '';
 const showLineNumbers = isFile ? (props.showLineNumbers ?? false) : false;
 const command = !isFile ? props.command : '';
@@ -104,7 +106,10 @@ const formattedOutput = !isFile ? formatTerminalOutput(output) : '';
       <>
         <div class="flex items-center justify-between gap-2 h-10 border-b px-3 sm:px-4 border-[#83848D]/30 text-[#9CA3AF]">
           <span class="flex-1 truncate text-xs sm:text-sm font-mono">{filename}</span>
-          <ButtonCopy target={`#${codeId}`} class="opacity-50 group-hover:opacity-100 transition-opacity" />
+          <ButtonCopy
+            target={`#${codeId}`}
+            class="opacity-50 group-hover:opacity-100 transition-opacity"
+          />
         </div>
         <div
           class:list={[
@@ -127,13 +132,18 @@ const formattedOutput = !isFile ? formatTerminalOutput(output) : '';
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center gap-2 group/cmd">
             <span class="text-[#86efac] select-none">$</span>
-            <span id={commandId} class="text-zinc-100 flex-1">{command}</span>
+            <span id={commandId} class="text-zinc-100 flex-1">
+              {command}
+            </span>
             <ButtonCopy
               target={`#${commandId}`}
-              class="h-5 w-5 opacity-0 group-hover/cmd:opacity-70 hover:!opacity-100 transition-opacity [&_.copy-icon]:h-3.5 [&_.copy-icon]:w-3.5 [&_.check-icon]:h-3.5 [&_.check-icon]:w-3.5 [&_.text-copy]:hidden"
+              class="h-5 w-5 group-hover/cmd:opacity-70 transition-opacity [&_.copy-icon]:h-3.5 [&_.copy-icon]:w-3.5 [&_.check-icon]:h-3.5 [&_.check-icon]:w-3.5 [&_.text-copy]:hidden"
             />
           </div>
-          <pre class="text-[#9CA3AF] whitespace-pre-wrap leading-relaxed mt-2" set:html={formattedOutput} />
+          <pre
+            class="text-[#9CA3AF] whitespace-pre-wrap leading-relaxed mt-2"
+            set:html={formattedOutput}
+          />
         </div>
       </div>
     )

@@ -11,6 +11,9 @@ import Github from '../icons/github.astro';
 >
   <div class="flex flex-col gap-4 items-center">
     <a
+      href="https://www.npmjs.com/package/strapi2front"
+      target="_blank"
+      rel="noopener noreferrer"
       class="w-fit text-white border border-dashed bg-[#202020] border-[#424242] leading-tight pt-1 pb-0.5 lg:pt-2 lg:pb-1 px-2.5 text-xs lg:text-lg"
       >v0.1.0</a
     >
@@ -48,8 +51,13 @@ import Github from '../icons/github.astro';
       }}
     />
     <div class="w-fit mx-auto flex gap-2.5">
-      <Button class="w-fit border border-white cursor-pointer"> Get Started </Button>
-      <Button href="https://github.com/Eleven-Estudio/strapi2front" target='blank' class="w-fit inline-flex justify-center gap-2 hover:text-black text-white cursor-pointer" variant={'outline'}>
+      <Button href="#steps" class="w-fit border border-white cursor-pointer"> Get Started </Button>
+      <Button
+        href="https://github.com/Eleven-Estudio/strapi2front"
+        target="blank"
+        class="w-fit inline-flex justify-center gap-2 hover:text-black text-white cursor-pointer"
+        variant={'outline'}
+      >
         <span class="text-nowrap">GitHub Repo</span>
         <Github class="fill-current h-3.5 md:h-5 w-3.5 md:w-5" />
       </Button>
