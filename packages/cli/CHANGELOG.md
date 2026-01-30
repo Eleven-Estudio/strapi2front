@@ -1,5 +1,14 @@
 # strapi2front
 
+## 0.1.5
+
+### Patch Changes
+
+- fix: silence dotenv promotional logs in CLI output
+- Updated dependencies
+  - @strapi2front/core@0.1.5
+  - @strapi2front/generators@0.1.5
+
 ## 0.1.4
 
 ### Patch Changes

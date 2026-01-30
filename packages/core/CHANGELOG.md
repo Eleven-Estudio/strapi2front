@@ -1,5 +1,11 @@
 # @strapi2front/core
 
+## 0.1.5
+
+### Patch Changes
+
+- fix: silence dotenv promotional logs in CLI output
+
 ## 0.1.2
 
 ### Patch Changes
