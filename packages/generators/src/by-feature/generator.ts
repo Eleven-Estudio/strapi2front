@@ -26,6 +26,11 @@ export interface ByFeatureGeneratorOptions {
    * @default 'typescript'
    */
   outputFormat?: "typescript" | "jsdoc";
+  /**
+   * Module type for JSDoc output: 'esm' for ES Modules, 'commonjs' for CommonJS
+   * @default 'commonjs'
+   */
+  moduleType?: "esm" | "commonjs";
 }
 
 /**
@@ -60,9 +65,13 @@ export async function generateByFeature(
     blocksRendererInstalled = false,
     strapiVersion = "v5",
     apiPrefix = "/api",
-    outputFormat = "typescript"
+    outputFormat = "typescript",
+    moduleType = "commonjs"
   } = options;
   const generatedFiles: string[] = [];
+
+  // Determine export/import style for JSDoc
+  const useESM = outputFormat === "jsdoc" && moduleType === "esm";
 
   // File extension based on output format
   const ext = outputFormat === "jsdoc" ? "js" : "ts";
@@ -79,7 +88,7 @@ export async function generateByFeature(
   // Utils
   const utilsPath = path.join(sharedDir, `utils.${ext}`);
   const utilsContent = outputFormat === "jsdoc"
-    ? generateUtilityTypesJSDoc(blocksRendererInstalled, strapiVersion)
+    ? generateUtilityTypesJSDoc(blocksRendererInstalled, strapiVersion, useESM)
     : generateUtilityTypes(blocksRendererInstalled, strapiVersion);
   await writeFile(utilsPath, await formatCode(utilsContent));
   generatedFiles.push(utilsPath);
@@ -87,7 +96,7 @@ export async function generateByFeature(
   // Client
   const clientPath = path.join(sharedDir, `client.${ext}`);
   const clientContent = outputFormat === "jsdoc"
-    ? generateClientJSDoc(strapiVersion, apiPrefix)
+    ? generateClientJSDoc(strapiVersion, apiPrefix, useESM)
     : generateClient(strapiVersion, apiPrefix);
   await writeFile(clientPath, await formatCode(clientContent));
   generatedFiles.push(clientPath);
@@ -95,7 +104,7 @@ export async function generateByFeature(
   // Locales
   const localesPath = path.join(sharedDir, `locales.${ext}`);
   const localesContent = outputFormat === "jsdoc"
-    ? generateLocalesFileJSDoc(locales)
+    ? generateLocalesFileJSDoc(locales, useESM)
     : generateLocalesFile(locales);
   await writeFile(localesPath, await formatCode(localesContent));
   generatedFiles.push(localesPath);
@@ -108,7 +117,7 @@ export async function generateByFeature(
     if (features.types) {
       const typesPath = path.join(featureDir, `types.${ext}`);
       const content = outputFormat === "jsdoc"
-        ? generateCollectionTypesJSDoc(collection, schema)
+        ? generateCollectionTypesJSDoc(collection, schema, useESM)
         : generateCollectionTypes(collection, schema);
       await writeFile(typesPath, await formatCode(content));
       generatedFiles.push(typesPath);
@@ -117,7 +126,7 @@ export async function generateByFeature(
     if (features.services) {
       const servicePath = path.join(featureDir, `service.${ext}`);
       const content = outputFormat === "jsdoc"
-        ? generateCollectionServiceJSDoc(collection, strapiVersion)
+        ? generateCollectionServiceJSDoc(collection, strapiVersion, useESM)
         : generateCollectionService(collection, strapiVersion);
       await writeFile(servicePath, await formatCode(content));
       generatedFiles.push(servicePath);
@@ -138,7 +147,7 @@ export async function generateByFeature(
     if (features.types) {
       const typesPath = path.join(featureDir, `types.${ext}`);
       const content = outputFormat === "jsdoc"
-        ? generateSingleTypesJSDoc(single, schema)
+        ? generateSingleTypesJSDoc(single, schema, useESM)
         : generateSingleTypes(single, schema);
       await writeFile(typesPath, await formatCode(content));
       generatedFiles.push(typesPath);
@@ -147,7 +156,7 @@ export async function generateByFeature(
     if (features.services) {
       const servicePath = path.join(featureDir, `service.${ext}`);
       const content = outputFormat === "jsdoc"
-        ? generateSingleServiceJSDoc(single, strapiVersion)
+        ? generateSingleServiceJSDoc(single, strapiVersion, useESM)
         : generateSingleService(single, strapiVersion);
       await writeFile(servicePath, await formatCode(content));
       generatedFiles.push(servicePath);
@@ -158,7 +167,7 @@ export async function generateByFeature(
   for (const component of schema.components) {
     const componentPath = path.join(outputDir, 'components', `${toKebabCase(component.name)}.${ext}`);
     const content = outputFormat === "jsdoc"
-      ? generateComponentTypesJSDoc(component, schema)
+      ? generateComponentTypesJSDoc(component, schema, useESM)
       : generateComponentTypes(component, schema);
     await writeFile(componentPath, await formatCode(content));
     generatedFiles.push(componentPath);
@@ -1233,7 +1242,7 @@ export const ${actionPrefix}Actions = {
 // JSDoc Generators
 // ============================================
 
-function generateUtilityTypesJSDoc(blocksRendererInstalled: boolean, strapiVersion: "v4" | "v5"): string {
+function generateUtilityTypesJSDoc(blocksRendererInstalled: boolean, strapiVersion: "v4" | "v5", useESM: boolean = false): string {
   const isV4 = strapiVersion === "v4";
 
   const blocksContentType = isV4
@@ -1369,7 +1378,7 @@ function flattenV4ListResponse(items) {
   return items.map(item => flattenV4Response(item));
 }
 
-module.exports = { flattenV4Response, flattenV4ListResponse };` : '';
+${useESM ? 'export { flattenV4Response, flattenV4ListResponse };' : 'module.exports = { flattenV4Response, flattenV4ListResponse };'}` : '';
 
   return `// @ts-check
 /**
@@ -1420,13 +1429,17 @@ ${baseEntity}
 ${v4RawResponseTypes}
 ${blocksContentType}
 
-module.exports = {};
+${useESM ? 'export {};' : 'module.exports = {};'}
 `;
 }
 
-function generateClientJSDoc(strapiVersion: "v4" | "v5", apiPrefix: string = "/api"): string {
+function generateClientJSDoc(strapiVersion: "v4" | "v5", apiPrefix: string = "/api", useESM: boolean = false): string {
   const isV4 = strapiVersion === "v4";
   const normalizedPrefix = apiPrefix.startsWith('/') ? apiPrefix : '/' + apiPrefix;
+
+  const importStatement = useESM
+    ? `import Strapi from 'strapi-sdk-js';`
+    : `const Strapi = require('strapi-sdk-js').default;`;
 
   if (isV4) {
     return `// @ts-check
@@ -1435,7 +1448,7 @@ function generateClientJSDoc(strapiVersion: "v4" | "v5", apiPrefix: string = "/a
  * Generated by strapi2front
  */
 
-const Strapi = require('strapi-sdk-js').default;
+${importStatement}
 
 // Initialize the Strapi client
 const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
@@ -1635,7 +1648,7 @@ function single(singularName) {
   };
 }
 
-module.exports = { strapi, collection, single };
+${useESM ? 'export { strapi, collection, single };' : 'module.exports = { strapi, collection, single };'}
 `;
   }
 
@@ -1645,7 +1658,7 @@ module.exports = { strapi, collection, single };
  * Generated by strapi2front
  */
 
-const Strapi = require('strapi-sdk-js').default;
+${importStatement}
 
 // Initialize the Strapi client
 const strapiUrl = process.env.STRAPI_URL || 'http://localhost:1337';
@@ -1788,11 +1801,11 @@ function single(singularName) {
   };
 }
 
-module.exports = { strapi, collection, single };
+${useESM ? 'export { strapi, collection, single };' : 'module.exports = { strapi, collection, single };'}
 `;
 }
 
-function generateLocalesFileJSDoc(locales: StrapiLocale[]): string {
+function generateLocalesFileJSDoc(locales: StrapiLocale[], useESM: boolean = false): string {
   if (locales.length === 0) {
     return `// @ts-check
 /**
@@ -1828,7 +1841,7 @@ function getLocaleName(code) {
   return code;
 }
 
-module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };
+${useESM ? 'export { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };' : 'module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };'}
 `;
   }
 
@@ -1872,7 +1885,7 @@ function getLocaleName(code) {
   return localeNames[code] || code;
 }
 
-module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };
+${useESM ? 'export { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };' : 'module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocaleName };'}
 `;
 }
 
@@ -1880,7 +1893,7 @@ module.exports = { locales, defaultLocale, localeNames, isValidLocale, getLocale
 // JSDoc Collection Types Generation
 // ============================================
 
-function generateCollectionTypesJSDoc(collection: CollectionType, schema: ParsedSchema): string {
+function generateCollectionTypesJSDoc(collection: CollectionType, schema: ParsedSchema, useESM: boolean = false): string {
   const typeName = toPascalCase(collection.singularName);
   const attributes = generateJSDocAttributes(collection.attributes, schema, 'collection');
 
@@ -1912,11 +1925,11 @@ ${attributes}
  * @property {${typeName}Filters} [$not]
  */
 
-module.exports = {};
+${useESM ? 'export {};' : 'module.exports = {};'}
 `;
 }
 
-function generateSingleTypesJSDoc(single: SingleType, schema: ParsedSchema): string {
+function generateSingleTypesJSDoc(single: SingleType, schema: ParsedSchema, useESM: boolean = false): string {
   const typeName = toPascalCase(single.singularName);
   const attributes = generateJSDocAttributes(single.attributes, schema, 'single');
 
@@ -1936,11 +1949,11 @@ function generateSingleTypesJSDoc(single: SingleType, schema: ParsedSchema): str
 ${attributes}
  */
 
-module.exports = {};
+${useESM ? 'export {};' : 'module.exports = {};'}
 `;
 }
 
-function generateComponentTypesJSDoc(component: ComponentType, schema: ParsedSchema): string {
+function generateComponentTypesJSDoc(component: ComponentType, schema: ParsedSchema, useESM: boolean = false): string {
   const typeName = toPascalCase(component.name);
   const attributes = generateJSDocAttributes(component.attributes, schema, 'component');
 
@@ -1958,7 +1971,7 @@ function generateComponentTypesJSDoc(component: ComponentType, schema: ParsedSch
 ${attributes}
  */
 
-module.exports = {};
+${useESM ? 'export {};' : 'module.exports = {};'}
 `;
 }
 
@@ -2079,7 +2092,7 @@ function attributeToJSDocType(
 // JSDoc Collection Service Generation
 // ============================================
 
-function generateCollectionServiceJSDoc(collection: CollectionType, strapiVersion: "v4" | "v5"): string {
+function generateCollectionServiceJSDoc(collection: CollectionType, strapiVersion: "v4" | "v5", useESM: boolean = false): string {
   const typeName = toPascalCase(collection.singularName);
   const serviceName = toCamelCase(collection.singularName) + 'Service';
   const endpoint = collection.pluralName;
@@ -2091,6 +2104,10 @@ function generateCollectionServiceJSDoc(collection: CollectionType, strapiVersio
   const idParam = isV4 ? 'id' : 'documentId';
   const idType = isV4 ? 'number' : 'string';
 
+  const importStatement = useESM
+    ? `import { collection } from '../../shared/client.js';`
+    : `const { collection } = require('../../shared/client');`;
+
   return `// @ts-check
 /**
  * ${collection.displayName} Service
@@ -2099,7 +2116,7 @@ function generateCollectionServiceJSDoc(collection: CollectionType, strapiVersio
  * Strapi version: ${strapiVersion}
  */
 
-const { collection } = require('../../shared/client');
+${importStatement}
 
 /**
  * @typedef {Object} FindManyOptions
@@ -2240,7 +2257,7 @@ ${hasSlug ? `
   },
 };
 
-module.exports = { ${serviceName} };
+${useESM ? `export { ${serviceName} };` : `module.exports = { ${serviceName} };`}
 `;
 }
 
@@ -2248,11 +2265,15 @@ module.exports = { ${serviceName} };
 // JSDoc Single Service Generation
 // ============================================
 
-function generateSingleServiceJSDoc(single: SingleType, strapiVersion: "v4" | "v5"): string {
+function generateSingleServiceJSDoc(single: SingleType, strapiVersion: "v4" | "v5", useESM: boolean = false): string {
   const typeName = toPascalCase(single.singularName);
   const serviceName = toCamelCase(single.singularName) + 'Service';
   const endpoint = single.singularName;
   const { localized, draftAndPublish } = single;
+
+  const importStatement = useESM
+    ? `import { single } from '../../shared/client.js';`
+    : `const { single } = require('../../shared/client');`;
 
   return `// @ts-check
 /**
@@ -2262,7 +2283,7 @@ function generateSingleServiceJSDoc(single: SingleType, strapiVersion: "v4" | "v
  * Strapi version: ${strapiVersion}
  */
 
-const { single } = require('../../shared/client');
+${importStatement}
 
 /**
  * @typedef {Object} FindOptions
@@ -2309,6 +2330,6 @@ const ${serviceName} = {
   },
 };
 
-module.exports = { ${serviceName} };
+${useESM ? `export { ${serviceName} };` : `module.exports = { ${serviceName} };`}
 `;
 }

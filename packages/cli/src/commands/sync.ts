@@ -15,6 +15,7 @@ import { generateClient } from "@strapi2front/generators";
 import { generateLocales } from "@strapi2front/generators";
 import { generateByFeature } from "@strapi2front/generators";
 import { logger } from "../lib/utils/logger.js";
+import { detectModuleType } from "../lib/detectors/module-type.js";
 
 const BLOCKS_RENDERER_PACKAGE = "@strapi/blocks-react-renderer";
 
@@ -290,6 +291,19 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     // Get output format from config (default to typescript)
     const outputFormat = config.outputFormat || "typescript";
 
+    // Detect module type for JSDoc output (ESM vs CommonJS)
+    let moduleType: "esm" | "commonjs" = "commonjs";
+    if (outputFormat === "jsdoc") {
+      if (config.moduleType) {
+        moduleType = config.moduleType;
+        p.log.info(`Module type: ${pc.cyan(moduleType)} (from config)`);
+      } else {
+        const detected = await detectModuleType(cwd);
+        moduleType = detected.type;
+        p.log.info(`Module type: ${pc.cyan(moduleType)} (${detected.reason})`);
+      }
+    }
+
     if (isByFeature) {
       // Generate using by-feature structure (screaming architecture)
       s.start(`Generating files (by-feature, ${outputFormat})...`);
@@ -304,6 +318,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
         strapiVersion: config.strapiVersion,
         apiPrefix: config.apiPrefix,
         outputFormat,
+        moduleType,
       });
       generatedFiles.push(...files);
       s.stop(`Generated ${files.length} files`);

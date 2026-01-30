@@ -17,6 +17,9 @@ export const configSchema = z.object({
   // Output format: 'typescript' for .ts files, 'jsdoc' for .js with JSDoc annotations
   outputFormat: z.enum(["typescript", "jsdoc"]).default("typescript"),
 
+  // Module type: 'esm' for ES Modules, 'commonjs' for CommonJS (auto-detected if not specified)
+  moduleType: z.enum(["esm", "commonjs"]).optional(),
+
   // Output paths
   output: z.object({
     path: z.string().default("src/strapi"),
