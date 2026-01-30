@@ -1,4 +1,4 @@
-# strapi2front
+# @strapi2front/generators
 
 ## 0.1.2
 
@@ -12,10 +12,3 @@
 
 - Updated dependencies
   - @strapi2front/core@0.1.2
-  - @strapi2front/generators@0.1.2
-
-## 0.1.1
-
-### Patch Changes
-
-- a4c0421: Run init command by default when no arguments provided
