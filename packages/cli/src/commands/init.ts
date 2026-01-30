@@ -168,18 +168,16 @@ function generateConfigFile(answers: {
   generateActions: boolean;
   generateServices: boolean;
 }): string {
-  // Only include apiPrefix if it's not the default
-  const apiPrefixLine = answers.apiPrefix !== "/api"
-    ? `\n  // API prefix (customized from default "/api")\n  apiPrefix: "${answers.apiPrefix}",\n`
-    : "";
-
   return `import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   // Strapi connection
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
   token: process.env.STRAPI_TOKEN,
-${apiPrefixLine}
+
+  // API prefix (default: "/api")
+  apiPrefix: "${answers.apiPrefix}",
+
   // Output configuration
   output: {
     path: "${answers.outputDir}",
