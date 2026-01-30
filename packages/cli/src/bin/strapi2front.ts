@@ -42,5 +42,16 @@ program
   .option('--clean', 'Automatically remove orphaned files from previous structure')
   .action(syncCommand);
 
-// Parse args
-program.parse();
+// If no command is provided, run init by default
+const args = process.argv.slice(2);
+const commands = ['init', 'sync', 'help', '--help', '-h', '--version', '-V'];
+const hasCommand = args.some((arg) => commands.includes(arg));
+
+if (args.length === 0 || !hasCommand) {
+  // Show logo and run init
+  console.log(pc.cyan(logo));
+  initCommand({});
+} else {
+  // Parse args normally
+  program.parse();
+}
