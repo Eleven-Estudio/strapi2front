@@ -35,3 +35,6 @@ bun.lockb
 .env
 .env.local
 .env.development.local
+
+# Adapter
+.vercel

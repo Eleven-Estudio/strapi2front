@@ -68,7 +68,7 @@ const steps = [
         <p class="text-[#9CA3AF] text-xs sm:text-base">
           <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>Don't waste time
           defining interfaces <br />
-          <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>strapi-integrate
+          <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>strapi2front
           reads the Strapi schema <br />
           <span aria-hidden="true" class="select-none text-[#D6F9F3] pr-2">//</span>and generates
           native Astro Actions.
@@ -91,13 +91,13 @@ const steps = [
     <!-- Right column: Animated code blocks -->
     <div class="workflow-content-wrapper" id="workflow-content">
       <div class="workflow-content-item" data-content="setup" style="opacity: 1; display: block;">
-        <CodeBlock type="terminal" command="npx starpi@latest" output={setupOutput} />
+        <CodeBlock type="terminal" command="npx strapi2front@latest" output={setupOutput} />
       </div>
       <div class="workflow-content-item" data-content="config" style="opacity: 0; display: none;">
         <CodeBlock type="file" filename="strapi.config.ts" code={configCode} lang="typescript" />
       </div>
       <div class="workflow-content-item" data-content="sync" style="opacity: 0; display: none;">
-        <CodeBlock type="terminal" command="npx starpi@latest sync" output={syncOutput} />
+        <CodeBlock type="terminal" command="npx strapi2front@latest sync" output={syncOutput} />
       </div>
       <div class="workflow-content-item" data-content="use" style="opacity: 0; display: none;">
         <CodeBlock type="file" filename="src/pages/index.astro" code={useCode} lang="astro" />
