@@ -1,5 +1,17 @@
 # strapi2front
 
+## 0.3.1
+
+### Patch Changes
+
+- Fix JSDoc type casting issues in Strapi v4 client
+  - Use intermediate 'any' type casts to bypass TypeScript generic constraints
+  - Fixes type errors in flattenItem and flattenRelations functions
+  - Resolves "Type 'X' is not assignable to type 'T'" errors in generated code
+
+- Updated dependencies
+  - @strapi2front/generators@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes
