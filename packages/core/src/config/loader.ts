@@ -17,8 +17,8 @@ export function defineConfig(config: Partial<StrapiIntegrateConfig>): StrapiInte
  * Load configuration from strapi.config.ts
  */
 export async function loadConfig(cwd: string = process.cwd()): Promise<StrapiIntegrateConfig> {
-  // Load environment variables from .env file
-  loadEnv({ path: path.join(cwd, '.env') });
+  // Load environment variables from .env file (quiet to suppress dotenv logs)
+  loadEnv({ path: path.join(cwd, '.env'), quiet: true });
 
   // Find config file
   let configPath: string | null = null;
