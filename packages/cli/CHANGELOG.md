@@ -1,5 +1,11 @@
 # strapi2front
 
+## 0.2.3
+
+### Patch Changes
+
+- 96fd0b4: Always save apiPrefix in config file, even when using default value
+
 ## 0.2.2
 
 ### Patch Changes
