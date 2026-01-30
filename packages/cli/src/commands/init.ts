@@ -2,12 +2,39 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { detectFramework } from "../lib/detectors/framework.js";
 import { detectTypeScript } from "../lib/detectors/typescript.js";
 import { detectPackageManager, getInstallCommand, getInstallDevCommand } from "../lib/detectors/package-manager.js";
 import { runInitPrompts } from "../lib/prompts/init.prompts.js";
 import { logger } from "../lib/utils/logger.js";
+
+/**
+ * Execute a shell command asynchronously
+ * This allows spinners to animate while the command runs
+ */
+function execAsync(command: string, cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const [cmd, ...args] = command.split(" ");
+    const child = spawn(cmd, args, {
+      cwd,
+      stdio: "ignore",
+      shell: true,
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+  });
+}
 
 export interface InitCommandOptions {
   yes?: boolean;
@@ -83,25 +110,25 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
     if (installDeps) {
       // Install strapi2front as dev dependency (needed for config file)
-      s.start("Installing strapi2front...");
+      const installStrapi2frontCmd = getInstallDevCommand(packageManager.name, "strapi2front");
+      s.start(`Installing strapi2front... (${pc.dim(installStrapi2frontCmd)})`);
       try {
-        const installStrapi2frontCmd = getInstallDevCommand(packageManager.name, "strapi2front");
-        execSync(installStrapi2frontCmd, { cwd, stdio: "ignore" });
-        s.stop("strapi2front installed");
+        await execAsync(installStrapi2frontCmd, cwd);
+        s.stop(`${pc.green("✓")} strapi2front installed`);
       } catch {
-        s.stop("Failed to install strapi2front");
-        logger.warn(`Please install manually: ${getInstallDevCommand(packageManager.name, "strapi2front")}`);
+        s.stop(`${pc.red("✗")} Failed to install strapi2front`);
+        logger.warn(`Please install manually: ${installStrapi2frontCmd}`);
       }
 
       // Install strapi-sdk-js as regular dependency
-      s.start("Installing strapi-sdk-js...");
+      const installSdkCmd = getInstallCommand(packageManager.name, "strapi-sdk-js");
+      s.start(`Installing strapi-sdk-js... (${pc.dim(installSdkCmd)})`);
       try {
-        const installSdkCmd = getInstallCommand(packageManager.name, "strapi-sdk-js");
-        execSync(installSdkCmd, { cwd, stdio: "ignore" });
-        s.stop("strapi-sdk-js installed");
+        await execAsync(installSdkCmd, cwd);
+        s.stop(`${pc.green("✓")} strapi-sdk-js installed`);
       } catch {
-        s.stop("Failed to install strapi-sdk-js");
-        logger.warn(`Please install manually: ${getInstallCommand(packageManager.name, "strapi-sdk-js")}`);
+        s.stop(`${pc.red("✗")} Failed to install strapi-sdk-js`);
+        logger.warn(`Please install manually: ${installSdkCmd}`);
       }
     } else {
       p.log.info(pc.dim("Remember to install dependencies manually:"));
