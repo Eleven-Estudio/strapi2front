@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { detectFramework } from "../lib/detectors/framework.js";
 import { detectTypeScript } from "../lib/detectors/typescript.js";
 import { detectPackageManager, getInstallCommand, getInstallDevCommand } from "../lib/detectors/package-manager.js";
+import { detectModuleType } from "../lib/detectors/module-type.js";
 import { runInitPrompts } from "../lib/prompts/init.prompts.js";
 import { logger } from "../lib/utils/logger.js";
 
@@ -73,6 +74,13 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
   s.start("Creating configuration files...");
 
   try {
+    // Detect module type for JSDoc projects
+    let moduleType: "esm" | "commonjs" = "commonjs";
+    if (answers.outputFormat === "jsdoc") {
+      const detected = await detectModuleType(cwd);
+      moduleType = detected.type;
+    }
+
     // Create config file (use .js extension for JSDoc projects)
     const configExtension = answers.outputFormat === "jsdoc" ? "js" : "ts";
     const configContent = generateConfigFile({
@@ -83,6 +91,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
       outputDir: answers.outputDir,
       generateActions: answers.generateActions,
       generateServices: answers.generateServices,
+      moduleType,
     });
     const configPath = path.join(cwd, `strapi.config.${configExtension}`);
     await fs.writeFile(configPath, configContent, "utf-8");
@@ -174,8 +183,10 @@ function generateConfigFile(answers: {
   outputDir: string;
   generateActions: boolean;
   generateServices: boolean;
+  moduleType: "esm" | "commonjs";
 }): string {
   const isTypeScript = answers.outputFormat === "typescript";
+  const useESM = answers.moduleType === "esm";
 
   if (isTypeScript) {
     return `import { defineConfig } from "strapi2front";
@@ -213,7 +224,47 @@ export default defineConfig({
 `;
   }
 
-  // JSDoc config (JavaScript)
+  // JSDoc config (JavaScript) - ESM or CommonJS based on project type
+  if (useESM) {
+    return `// @ts-check
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  // Strapi connection
+  url: process.env.STRAPI_URL || "${answers.strapiUrl}",
+  token: process.env.STRAPI_TOKEN,
+
+  // API prefix (default: "/api")
+  apiPrefix: "${answers.apiPrefix}",
+
+  // Output format: "typescript" (.ts) or "jsdoc" (.js with JSDoc)
+  outputFormat: "jsdoc",
+
+  // Module type: auto-detected as ESM
+  moduleType: "esm",
+
+  // Output configuration
+  output: {
+    path: "${answers.outputDir}",
+    types: "types",
+    services: "services",
+    structure: 'by-feature' // or 'by-layer'
+  },
+
+  // Features to generate
+  features: {
+    types: true,
+    services: ${answers.generateServices},
+    actions: false, // Actions require TypeScript
+  },
+
+  // Strapi version
+  strapiVersion: "${answers.strapiVersion}",
+});
+`;
+  }
+
+  // CommonJS config
   return `// @ts-check
 const { defineConfig } = require("strapi2front");
 

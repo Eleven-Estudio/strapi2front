@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import { config as loadEnv } from 'dotenv';
 import { configSchema, type StrapiIntegrateConfig, type StrapiIntegrateConfigInput } from './schema.js';
 
-const CONFIG_FILES = ['strapi.config.ts', 'strapi.config.js', 'strapi.config.mjs'];
+const CONFIG_FILES = ['strapi.config.ts', 'strapi.config.js', 'strapi.config.mjs', 'strapi.config.cjs'];
 
 /**
  * Helper function for defining configuration with type safety
