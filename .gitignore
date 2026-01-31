@@ -36,4 +36,4 @@ coverage/
 *.bak
 *.tmp
 
-.docs/
+docs/
