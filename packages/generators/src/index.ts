@@ -67,12 +67,28 @@ export {
   generateTypeScriptTypes,
   generateJSDocTypes,
   generateJSDocServices,
+  generateZodSchemas,
 } from './output/index.js';
 export type {
   TypeScriptTypesOptions,
   JSDocTypesOptions,
   JSDocServicesOptions,
+  ZodSchemasOptions,
+  GeneratedSchemaInfo,
 } from './output/index.js';
+
+// =============================================================================
+// Zod schema mapping utilities
+// =============================================================================
+export {
+  mapAttributeToZodSchema,
+  generateZodObjectSchema,
+  isSystemField,
+} from './shared/zod-mapper.js';
+export type {
+  ZodMapperOptions,
+  ZodMappedAttribute,
+} from './shared/zod-mapper.js';
 
 // =============================================================================
 // Shared types
