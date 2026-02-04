@@ -5,6 +5,7 @@ import CommandPm from '../command-pm.astro';
 import Button from '../globals/button.astro';
 import Github from '../icons/github.astro';
 import { getLatestVersion } from '@/lib/get-version';
+import { ROUTE } from '@/config/routes';
 
 const version = await getLatestVersion()
 ---
@@ -54,7 +55,7 @@ const version = await getLatestVersion()
       }}
     />
     <div class="w-fit mx-auto flex gap-2.5">
-      <Button href="#steps" class="w-fit border border-white cursor-pointer"> Get Started </Button>
+      <Button href={ROUTE.DOCS.path} class="w-fit border border-white cursor-pointer"> Get Started </Button>
       <Button
         href="https://github.com/Eleven-Estudio/strapi2front"
         target="blank"
