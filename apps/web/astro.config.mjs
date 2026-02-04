@@ -12,13 +12,14 @@ export default defineConfig({
   // Use to generate your sitemap and canonical URLs in your final build.
   integrations: [
     starlight({
-      title: 'strapi2front',
+      prerender: true,
+      title: 'Strapi2Front',
       description: 'Generate TypeScript types, services, and actions from your Strapi schema',
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/elevenestudio/strapi2front' },
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/Eleven-Estudio/strapi2front' },
       ],
       editLink: {
-        baseUrl: 'https://github.com/elevenestudio/strapi2front/edit/main/apps/web/',
+        baseUrl: 'https://github.com/Eleven-Estudio/strapi2front/edit/main/apps/web/',
       },
       // Disable the default 404 route (we have our own)
       disable404Route: true,
