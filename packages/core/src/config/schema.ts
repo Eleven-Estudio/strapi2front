@@ -35,6 +35,32 @@ export const configSchema = z.object({
     types: z.boolean().default(true),
     services: z.boolean().default(true),
     actions: z.boolean().default(true),
+    // Zod schemas for validation (React Hook Form, TanStack Form, etc.)
+    // Default: true for TypeScript, false for JSDoc
+    schemas: z.boolean().optional(),
+  }).default({}),
+
+  // Schema generation options
+  schemaOptions: z.object({
+    /**
+     * Use advanced relation format with connect/disconnect/set operations
+     * instead of simple ID arrays.
+     *
+     * When false (default): { tags: ["id1", "id2"] }
+     * When true: { tags: { connect: [{ documentId: "id1" }], disconnect: [...] } }
+     *
+     * Advanced format supports:
+     * - connect: Add relations while preserving existing
+     * - disconnect: Remove specific relations
+     * - set: Replace all relations
+     * - locale: For i18n content types
+     * - status: For draft/published targeting
+     * - position: For ordering (before, after, start, end)
+     *
+     * @default false
+     * @see https://docs.strapi.io/dev-docs/api/rest/relations
+     */
+    advancedRelations: z.boolean().default(false),
   }).default({}),
 
   // Advanced options
