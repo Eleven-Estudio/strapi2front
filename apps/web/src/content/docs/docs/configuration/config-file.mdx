@@ -1,0 +1,174 @@
+---
+title: Config File
+description: Complete guide to the strapi.config.ts configuration file
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `strapi.config.ts` file is the central configuration for strapi2front. It controls how types, services, and schemas are generated.
+
+## Basic Configuration
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  // Strapi server URL
+  url: process.env.STRAPI_URL || "http://localhost:1337",
+
+  // API token for authentication
+  token: process.env.STRAPI_TOKEN,
+
+  // Output configuration
+  output: {
+    path: "src/strapi",
+    structure: "by-feature",
+  },
+
+  // Features to generate
+  features: {
+    types: true,
+    services: true,
+    schemas: true,
+  },
+});
+```
+
+## Configuration Options
+
+### `url`
+
+The base URL of your Strapi server.
+
+```typescript
+url: "http://localhost:1337"
+```
+
+### `token`
+
+Your Strapi API token. Required for fetching the schema.
+
+```typescript
+token: process.env.STRAPI_TOKEN
+```
+
+<Aside type="caution">
+  Never hardcode your token. Always use environment variables.
+</Aside>
+
+### `apiPrefix`
+
+The API prefix used by Strapi. Defaults to `/api`.
+
+```typescript
+apiPrefix: "/api" // default
+```
+
+### `strapiVersion`
+
+Explicitly set the Strapi version. Auto-detected if not specified.
+
+```typescript
+strapiVersion: "v5" // or "v4"
+```
+
+### `outputFormat`
+
+Choose between TypeScript or JavaScript with JSDoc.
+
+```typescript
+outputFormat: "typescript" // default, generates .ts files
+// or
+outputFormat: "jsdoc" // generates .js files with JSDoc comments
+```
+
+### `output`
+
+Configure where and how files are generated.
+
+```typescript
+output: {
+  // Base output directory
+  path: "src/strapi",
+
+  // Organization structure
+  structure: "by-feature", // or "by-layer"
+
+  // Subdirectories (only for by-layer structure)
+  types: "types",
+  services: "services",
+  actions: "actions/strapi",
+}
+```
+
+### `features`
+
+Enable or disable specific generators.
+
+```typescript
+features: {
+  types: true,      // TypeScript interfaces
+  services: true,   // API service functions
+  actions: true,    // Astro actions (TypeScript only)
+  schemas: true,    // Zod validation schemas
+}
+```
+
+### `schemaOptions`
+
+Configure Zod schema generation.
+
+```typescript
+schemaOptions: {
+  // Enable advanced relation format with connect/disconnect/set
+  advancedRelations: true,
+}
+```
+
+## Full Example
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  url: process.env.STRAPI_URL || "http://localhost:1337",
+  token: process.env.STRAPI_TOKEN,
+  apiPrefix: "/api",
+  strapiVersion: "v5",
+  outputFormat: "typescript",
+
+  output: {
+    path: "src/strapi",
+    structure: "by-feature",
+  },
+
+  features: {
+    types: true,
+    services: true,
+    actions: true,
+    schemas: true,
+  },
+
+  schemaOptions: {
+    advancedRelations: true,
+  },
+});
+```
+
+## Environment Variables
+
+Recommended `.env` setup:
+
+```bash
+# .env
+STRAPI_URL=http://localhost:1337
+STRAPI_TOKEN=your-api-token-here
+```
+
+For production:
+
+```bash
+# .env.production
+STRAPI_URL=https://api.yoursite.com
+STRAPI_TOKEN=production-token-here
+```

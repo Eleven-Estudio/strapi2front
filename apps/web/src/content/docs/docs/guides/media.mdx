@@ -1,0 +1,311 @@
+---
+title: Media Upload
+description: Working with media files in Strapi using strapi2front
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Strapi handles media files (images, documents, videos) through its Upload plugin. strapi2front generates types for media fields and provides patterns for file uploads.
+
+## Media Types
+
+strapi2front generates the `StrapiMedia` type:
+
+```typescript
+export interface StrapiMedia {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number | null;
+  height: number | null;
+  formats: StrapiMediaFormats | null;
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  url: string;
+  previewUrl: string | null;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StrapiMediaFormats {
+  thumbnail?: StrapiMediaFormat;
+  small?: StrapiMediaFormat;
+  medium?: StrapiMediaFormat;
+  large?: StrapiMediaFormat;
+}
+
+export interface StrapiMediaFormat {
+  name: string;
+  hash: string;
+  ext: string;
+  mime: string;
+  width: number;
+  height: number;
+  size: number;
+  url: string;
+}
+```
+
+## Reading Media
+
+Media fields are populated like relations:
+
+```typescript
+const article = await articleService.findOne("abc123", {
+  populate: ["cover", "gallery"],
+});
+
+// Single media
+console.log(article.cover?.url);
+
+// Multiple media
+article.gallery?.forEach(img => {
+  console.log(img.url, img.width, img.height);
+});
+```
+
+### Responsive Images
+
+Use the `formats` property for responsive images:
+
+```tsx
+function ResponsiveImage({ media }: { media: StrapiMedia }) {
+  const baseUrl = process.env.STRAPI_URL;
+
+  return (
+    <picture>
+      {media.formats?.large && (
+        <source
+          srcSet={`${baseUrl}${media.formats.large.url}`}
+          media="(min-width: 1024px)"
+        />
+      )}
+      {media.formats?.medium && (
+        <source
+          srcSet={`${baseUrl}${media.formats.medium.url}`}
+          media="(min-width: 768px)"
+        />
+      )}
+      {media.formats?.small && (
+        <source
+          srcSet={`${baseUrl}${media.formats.small.url}`}
+          media="(min-width: 640px)"
+        />
+      )}
+      <img
+        src={`${baseUrl}${media.url}`}
+        alt={media.alternativeText || ""}
+        width={media.width || undefined}
+        height={media.height || undefined}
+      />
+    </picture>
+  );
+}
+```
+
+## Uploading Files
+
+Strapi's Upload API uses multipart form data. Here's how to upload files:
+
+### Upload Function
+
+```typescript
+async function uploadFile(file: File): Promise<number> {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await fetch(`${STRAPI_URL}/api/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${STRAPI_TOKEN}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Upload failed");
+  }
+
+  const [uploadedFile] = await response.json();
+  return uploadedFile.id; // Return the file ID
+}
+```
+
+### Upload with Metadata
+
+```typescript
+async function uploadFileWithInfo(
+  file: File,
+  info: { name?: string; caption?: string; alternativeText?: string }
+): Promise<number> {
+  const formData = new FormData();
+  formData.append("files", file);
+  formData.append("fileInfo", JSON.stringify(info));
+
+  const response = await fetch(`${STRAPI_URL}/api/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${STRAPI_TOKEN}`,
+    },
+    body: formData,
+  });
+
+  const [uploadedFile] = await response.json();
+  return uploadedFile.id;
+}
+```
+
+## Associating Media with Content
+
+Media fields use numeric IDs (not documentIds):
+
+<Tabs>
+  <TabItem label="Create with Media">
+    ```typescript
+    // First upload the file
+    const fileId = await uploadFile(coverImage);
+
+    // Then create content with the file ID
+    await articleService.create({
+      title: "Article with Cover",
+      content: "...",
+      cover: fileId, // Numeric ID
+    });
+    ```
+  </TabItem>
+  <TabItem label="Update Media">
+    ```typescript
+    // Upload new file
+    const newFileId = await uploadFile(newCover);
+
+    // Update the content
+    await articleService.update("abc123", {
+      cover: newFileId,
+    });
+
+    // Remove media (set to null)
+    await articleService.update("abc123", {
+      cover: null,
+    });
+    ```
+  </TabItem>
+  <TabItem label="Multiple Media">
+    ```typescript
+    // Upload multiple files
+    const fileIds = await Promise.all(
+      files.map(file => uploadFile(file))
+    );
+
+    // Set gallery
+    await articleService.create({
+      title: "Article with Gallery",
+      gallery: fileIds, // Array of numeric IDs
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## Schema Validation
+
+Generated Zod schemas validate media fields as numbers:
+
+```typescript
+export const articleCreateSchema = z.object({
+  title: z.string(),
+  // Single media (nullable)
+  cover: z.number().int().positive().nullable(),
+  // Multiple media (optional array)
+  gallery: z.array(z.number().int().positive()).optional(),
+});
+```
+
+## Form Integration
+
+Example form with file upload:
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { articleCreateSchema } from "@/strapi/collections/article";
+
+function CreateArticleForm() {
+  const [uploading, setUploading] = useState(false);
+  const form = useForm({
+    resolver: zodResolver(articleCreateSchema),
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileId = await uploadFile(file);
+      form.setValue("cover", fileId);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onSubmit = async (data) => {
+    await articleService.create(data);
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <input {...form.register("title")} />
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={uploading}
+      />
+      {uploading && <span>Uploading...</span>}
+
+      {/* Hidden field for file ID */}
+      <input type="hidden" {...form.register("cover")} />
+
+      <button type="submit" disabled={uploading}>
+        Create Article
+      </button>
+    </form>
+  );
+}
+```
+
+## Image URLs
+
+<Aside type="tip">
+  Strapi returns relative URLs. Prepend your Strapi URL for absolute paths.
+</Aside>
+
+```typescript
+function getMediaUrl(media: StrapiMedia | null): string | null {
+  if (!media) return null;
+
+  // If using external provider (S3, Cloudinary), URL is already absolute
+  if (media.url.startsWith("http")) {
+    return media.url;
+  }
+
+  // Otherwise, prepend Strapi URL
+  return `${process.env.STRAPI_URL}${media.url}`;
+}
+```
+
+## Upload Providers
+
+Strapi supports various upload providers:
+
+- **Local** - Files stored on server filesystem
+- **AWS S3** - Amazon S3 storage
+- **Cloudinary** - Cloud-based image management
+- **Uploadcare** - File uploading and delivery
+
+The `StrapiMedia` type works with all providers. The `url` field will be absolute for cloud providers.

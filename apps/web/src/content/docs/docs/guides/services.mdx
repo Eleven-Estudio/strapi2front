@@ -1,0 +1,306 @@
+---
+title: Services
+description: Using generated API services for CRUD operations
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front generates type-safe service functions for all your content types. These services handle API communication with your Strapi backend.
+
+## Service Structure
+
+Each content type gets a service with these methods:
+
+```typescript
+export const articleService = {
+  find,     // List all with filters
+  findOne,  // Get by documentId
+  create,   // Create new entry
+  update,   // Update existing entry
+  delete,   // Delete entry
+};
+```
+
+## Find (List)
+
+Retrieve multiple entries with optional filters, pagination, and sorting.
+
+```typescript
+import { articleService } from "@/strapi/collections/article";
+
+// Get all articles
+const articles = await articleService.find();
+
+// With pagination
+const page1 = await articleService.find({
+  pagination: { page: 1, pageSize: 10 },
+});
+
+// With filters
+const published = await articleService.find({
+  filters: {
+    publishedAt: { $notNull: true },
+    title: { $contains: "TypeScript" },
+  },
+});
+
+// With sorting
+const latest = await articleService.find({
+  sort: ["publishedAt:desc", "title:asc"],
+});
+
+// With relations (populate)
+const withAuthor = await articleService.find({
+  populate: ["author", "categories"],
+});
+
+// Complex populate
+const detailed = await articleService.find({
+  populate: {
+    author: { fields: ["name", "email"] },
+    categories: { populate: ["icon"] },
+  },
+});
+```
+
+## Find One
+
+Get a single entry by its documentId.
+
+```typescript
+// Get by documentId
+const article = await articleService.findOne("abc123xyz");
+
+// With specific fields
+const article = await articleService.findOne("abc123xyz", {
+  fields: ["title", "content"],
+});
+
+// With relations
+const article = await articleService.findOne("abc123xyz", {
+  populate: ["author", "categories"],
+});
+```
+
+## Create
+
+Create a new entry.
+
+```typescript
+const newArticle = await articleService.create({
+  title: "My New Article",
+  slug: "my-new-article",
+  content: "Article content here...",
+});
+
+// With relations
+const articleWithAuthor = await articleService.create({
+  title: "New Article",
+  content: "Content...",
+  author: "authorDocumentId",
+  categories: ["cat1", "cat2"],
+});
+
+// With draft status (Strapi v5)
+const draft = await articleService.create(
+  { title: "Draft Article", content: "..." },
+  { status: "draft" }
+);
+```
+
+## Update
+
+Update an existing entry.
+
+```typescript
+const updated = await articleService.update("abc123xyz", {
+  title: "Updated Title",
+});
+
+// Partial updates (only changed fields)
+const updated = await articleService.update("abc123xyz", {
+  content: "New content only",
+});
+
+// Update with status change
+const published = await articleService.update(
+  "abc123xyz",
+  { title: "Final Title" },
+  { status: "published" }
+);
+```
+
+## Delete
+
+Delete an entry.
+
+```typescript
+await articleService.delete("abc123xyz");
+```
+
+## Filtering
+
+Strapi supports powerful filtering operators:
+
+```typescript
+const filtered = await articleService.find({
+  filters: {
+    // Equality
+    status: "published",
+
+    // Comparison
+    views: { $gt: 100 },
+    rating: { $gte: 4 },
+    stock: { $lt: 10 },
+    price: { $lte: 99.99 },
+
+    // String matching
+    title: { $contains: "guide" },
+    slug: { $startsWith: "how-to" },
+    email: { $endsWith: "@example.com" },
+
+    // Null checks
+    publishedAt: { $notNull: true },
+    deletedAt: { $null: true },
+
+    // Array membership
+    category: { $in: ["tech", "science"] },
+    status: { $notIn: ["draft", "archived"] },
+
+    // Logical operators
+    $or: [
+      { status: "published" },
+      { featured: true },
+    ],
+    $and: [
+      { views: { $gt: 100 } },
+      { rating: { $gte: 4 } },
+    ],
+  },
+});
+```
+
+## Population (Relations)
+
+Control which relations are loaded:
+
+<Tabs>
+  <TabItem label="Simple">
+    ```typescript
+    // Array of relation names
+    const articles = await articleService.find({
+      populate: ["author", "categories"],
+    });
+    ```
+  </TabItem>
+  <TabItem label="Nested">
+    ```typescript
+    // Nested population
+    const articles = await articleService.find({
+      populate: {
+        author: {
+          populate: ["avatar", "socialLinks"],
+        },
+        categories: {
+          fields: ["name", "slug"],
+        },
+      },
+    });
+    ```
+  </TabItem>
+  <TabItem label="Deep">
+    ```typescript
+    // Deep population with filters
+    const articles = await articleService.find({
+      populate: {
+        comments: {
+          filters: { approved: true },
+          sort: ["createdAt:desc"],
+          populate: {
+            author: {
+              fields: ["name"],
+            },
+          },
+        },
+      },
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## Localization (i18n)
+
+For content types with i18n enabled:
+
+```typescript
+// Get content in specific locale
+const spanishArticles = await articleService.find({
+  locale: "es",
+});
+
+// Get all localizations
+const article = await articleService.findOne("abc123", {
+  populate: ["localizations"],
+});
+```
+
+## Draft & Publish
+
+For content types with draft/publish enabled:
+
+```typescript
+// Get only published (default)
+const published = await articleService.find({
+  status: "published",
+});
+
+// Get drafts
+const drafts = await articleService.find({
+  status: "draft",
+});
+
+// Create as draft
+const draft = await articleService.create(
+  { title: "Work in Progress" },
+  { status: "draft" }
+);
+
+// Publish a draft
+const published = await articleService.update(
+  "abc123",
+  {},
+  { status: "published" }
+);
+```
+
+## Error Handling
+
+Services throw errors for failed requests:
+
+```typescript
+try {
+  const article = await articleService.findOne("invalid-id");
+} catch (error) {
+  if (error.status === 404) {
+    console.log("Article not found");
+  } else {
+    console.error("API error:", error.message);
+  }
+}
+```
+
+## Client Configuration
+
+Services use a shared client configured with your Strapi URL and token:
+
+```typescript
+// shared/client.ts (auto-generated)
+const client = createStrapiClient({
+  baseUrl: process.env.STRAPI_URL,
+  token: process.env.STRAPI_TOKEN,
+});
+```
+
+<Aside type="tip">
+  The client handles authentication, request formatting, and response parsing automatically.
+</Aside>

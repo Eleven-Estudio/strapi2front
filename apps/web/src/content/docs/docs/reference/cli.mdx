@@ -1,0 +1,171 @@
+---
+title: CLI Commands
+description: Complete reference for strapi2front CLI commands
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+strapi2front provides a CLI for initializing projects and generating code from your Strapi schema.
+
+## Installation
+
+```bash
+npm install -D strapi2front
+```
+
+## Commands
+
+### `init`
+
+Initialize a new strapi2front configuration file.
+
+```bash
+npx strapi2front init
+```
+
+**What it does:**
+- Creates `strapi.config.ts` in your project root
+- Prompts for Strapi URL and token
+- Detects your Strapi version
+- Configures output options
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Overwrite existing config file |
+
+**Example:**
+
+```bash
+# Create new config
+npx strapi2front init
+
+# Overwrite existing config
+npx strapi2front init --force
+```
+
+### `sync`
+
+Fetch schema from Strapi and generate types, services, and schemas.
+
+```bash
+npx strapi2front sync
+```
+
+**What it does:**
+- Loads configuration from `strapi.config.ts`
+- Connects to your Strapi instance
+- Fetches the content-type schema
+- Generates TypeScript/JavaScript files
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--types-only` | Only generate type definitions |
+| `--services-only` | Only generate service functions |
+| `--actions-only` | Only generate Astro actions |
+| `--clean` | Auto-clean orphaned files without prompting |
+| `--force`, `-f` | Force regeneration even if no changes |
+
+**Examples:**
+
+```bash
+# Full sync (types + services + schemas + actions)
+npx strapi2front sync
+
+# Only regenerate types
+npx strapi2front sync --types-only
+
+# Only regenerate services
+npx strapi2front sync --services-only
+
+# Clean orphaned files automatically
+npx strapi2front sync --clean
+```
+
+### `version`
+
+Display the current version of strapi2front.
+
+```bash
+npx strapi2front --version
+```
+
+### `help`
+
+Display help information.
+
+```bash
+npx strapi2front --help
+npx strapi2front sync --help
+```
+
+## Package.json Scripts
+
+Add convenient scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "strapi:init": "strapi2front init",
+    "strapi:sync": "strapi2front sync",
+    "strapi:types": "strapi2front sync --types-only"
+  }
+}
+```
+
+## CI/CD Integration
+
+Run sync in CI pipelines:
+
+```yaml
+# GitHub Actions example
+- name: Generate Strapi types
+  env:
+    STRAPI_URL: ${{ secrets.STRAPI_URL }}
+    STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
+  run: npx strapi2front sync
+```
+
+<Aside type="tip">
+  Run `sync` after Strapi schema changes to keep types up to date.
+</Aside>
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Error (connection failed, invalid config, etc.) |
+
+## Debug Output
+
+For troubleshooting, set the `DEBUG` environment variable:
+
+```bash
+DEBUG=strapi2front:* npx strapi2front sync
+```
+
+## Common Issues
+
+### "Could not find strapi.config"
+
+Run `npx strapi2front init` to create the configuration file.
+
+### "Connection refused"
+
+- Verify your Strapi server is running
+- Check the URL in your config
+- Ensure no firewall is blocking the connection
+
+### "401 Unauthorized"
+
+- Your API token may be invalid or expired
+- Generate a new token in Strapi admin
+- Ensure the token has access to Content-Type Builder
+
+### "Structure mismatch warning"
+
+This appears when switching between `by-feature` and `by-layer` structures. Use `--clean` to remove old files automatically.

@@ -1,0 +1,204 @@
+---
+title: Features
+description: Configure which features to generate with strapi2front
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+strapi2front can generate different types of code. Enable or disable features based on your needs.
+
+## Feature Configuration
+
+```typescript
+features: {
+  types: true,      // TypeScript interfaces
+  services: true,   // API service functions
+  actions: true,    // Astro actions
+  schemas: true,    // Zod validation schemas
+}
+```
+
+## Types
+
+Generates TypeScript interfaces for all your content types.
+
+```typescript
+features: {
+  types: true,
+}
+```
+
+**Generated:**
+- Interfaces for collections, singles, and components
+- Request/response types for API operations
+- Strapi system types (media, pagination, etc.)
+
+```typescript
+// Generated type example
+export interface Article {
+  id: number;
+  documentId: string;
+  title: string;
+  content: string;
+  author?: Author;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+}
+```
+
+## Services
+
+Generates API service functions with full CRUD operations.
+
+```typescript
+features: {
+  services: true,
+}
+```
+
+**Generated:**
+- `find()` - List with filters, pagination, sorting
+- `findOne()` - Get by documentId
+- `create()` - Create new entry
+- `update()` - Update existing entry
+- `delete()` - Delete entry
+
+```typescript
+// Generated service example
+export const articleService = {
+  find: (params?) => client.get('/articles', params),
+  findOne: (documentId, params?) => client.get(`/articles/${documentId}`, params),
+  create: (data, params?) => client.post('/articles', data, params),
+  update: (documentId, data, params?) => client.put(`/articles/${documentId}`, data, params),
+  delete: (documentId, params?) => client.delete(`/articles/${documentId}`, params),
+};
+```
+
+<Aside>
+  Services require types to be enabled for proper type inference.
+</Aside>
+
+## Actions
+
+Generates Astro actions for server-side API calls.
+
+```typescript
+features: {
+  actions: true,
+}
+```
+
+<Aside type="caution">
+  Actions are only generated for TypeScript projects (`outputFormat: "typescript"`).
+</Aside>
+
+**Generated:**
+- Type-safe Astro actions wrapping services
+- Input validation with Zod
+- Error handling
+
+```typescript
+// Generated action example
+export const article = {
+  find: defineAction({
+    input: articleFindSchema,
+    handler: async (input) => {
+      return articleService.find(input);
+    },
+  }),
+  // ... other actions
+};
+```
+
+## Schemas
+
+Generates Zod validation schemas for form validation.
+
+```typescript
+features: {
+  schemas: true,
+}
+```
+
+**Generated:**
+- `*CreateSchema` - For creating new entries
+- `*UpdateSchema` - For updating entries (all fields optional)
+- Relation schemas with connect/disconnect/set support
+
+```typescript
+// Generated schema example
+export const articleCreateSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  author: z.string().optional(), // relation as documentId
+});
+
+export const articleUpdateSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  author: z.string().optional(),
+});
+```
+
+### Advanced Relations
+
+Enable full Strapi v5 relation API support:
+
+```typescript
+schemaOptions: {
+  advancedRelations: true,
+}
+```
+
+This generates schemas supporting:
+
+```typescript
+// Shorthand: array of documentIds
+author: ["documentId1", "documentId2"]
+
+// Longhand: connect/disconnect/set
+author: {
+  connect: [{ documentId: "id1", position: { after: "id2" } }],
+  disconnect: ["id3"],
+}
+```
+
+## Selective Generation
+
+Generate only specific features using CLI flags:
+
+```bash
+# Only types
+npx strapi2front sync --types-only
+
+# Only services
+npx strapi2front sync --services-only
+
+# Only actions
+npx strapi2front sync --actions-only
+```
+
+## Recommended Setup
+
+For most projects:
+
+```typescript
+features: {
+  types: true,     // Always useful
+  services: true,  // For API calls
+  schemas: true,   // For form validation
+  actions: false,  // Enable only if using Astro
+}
+```
+
+For Astro projects:
+
+```typescript
+features: {
+  types: true,
+  services: true,
+  schemas: true,
+  actions: true,  // Enable Astro actions
+}
+```

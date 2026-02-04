@@ -1,0 +1,335 @@
+---
+title: Next.js Integration
+description: Using strapi2front with Next.js
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front works seamlessly with Next.js for both App Router and Pages Router.
+
+## Setup
+
+```typescript
+// strapi.config.ts
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  url: process.env.STRAPI_URL,
+  token: process.env.STRAPI_TOKEN,
+  output: {
+    path: "src/strapi",
+    structure: "by-feature",
+  },
+  features: {
+    types: true,
+    services: true,
+    actions: false, // Astro-specific, disable for Next.js
+    schemas: true,
+  },
+});
+```
+
+Generate code:
+
+```bash
+npx strapi2front sync
+```
+
+## Environment Variables
+
+```bash
+# .env.local
+STRAPI_URL=http://localhost:1337
+STRAPI_TOKEN=your-api-token
+```
+
+<Aside type="caution">
+  Prefix with `NEXT_PUBLIC_` only for client-side variables. Keep `STRAPI_TOKEN` server-side only.
+</Aside>
+
+## App Router
+
+### Server Components
+
+```tsx
+// app/articles/page.tsx
+import { articleService } from "@/strapi/collections/article";
+
+export default async function ArticlesPage() {
+  const articles = await articleService.find({
+    filters: { publishedAt: { $notNull: true } },
+    populate: ["author", "cover"],
+    sort: ["publishedAt:desc"],
+  });
+
+  return (
+    <ul>
+      {articles.data.map(article => (
+        <li key={article.documentId}>
+          <a href={`/articles/${article.slug}`}>{article.title}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Dynamic Routes
+
+```tsx
+// app/articles/[slug]/page.tsx
+import { articleService } from "@/strapi/collections/article";
+import { notFound } from "next/navigation";
+
+interface Props {
+  params: { slug: string };
+}
+
+export async function generateStaticParams() {
+  const articles = await articleService.find({
+    fields: ["slug"],
+    pagination: { pageSize: 100 },
+  });
+
+  return articles.data.map(article => ({
+    slug: article.slug,
+  }));
+}
+
+export default async function ArticlePage({ params }: Props) {
+  const articles = await articleService.find({
+    filters: { slug: params.slug },
+    populate: ["author", "cover", "categories"],
+  });
+
+  if (articles.data.length === 0) {
+    notFound();
+  }
+
+  const article = articles.data[0];
+
+  return (
+    <article>
+      <h1>{article.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: article.content }} />
+    </article>
+  );
+}
+```
+
+### Server Actions
+
+Create server actions for mutations:
+
+```tsx
+// app/actions/article.ts
+"use server";
+
+import { articleService } from "@/strapi/collections/article";
+import { articleCreateSchema } from "@/strapi/collections/article/schemas";
+import { revalidatePath } from "next/cache";
+
+export async function createArticle(formData: FormData) {
+  const data = {
+    title: formData.get("title") as string,
+    content: formData.get("content") as string,
+  };
+
+  // Validate with Zod schema
+  const validated = articleCreateSchema.parse(data);
+
+  const result = await articleService.create(validated);
+
+  revalidatePath("/articles");
+  return result;
+}
+```
+
+Use in components:
+
+```tsx
+// app/articles/new/page.tsx
+import { createArticle } from "@/app/actions/article";
+
+export default function NewArticlePage() {
+  return (
+    <form action={createArticle}>
+      <input name="title" required />
+      <textarea name="content" required />
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+## Pages Router
+
+### getStaticProps
+
+```tsx
+// pages/articles/index.tsx
+import { articleService } from "@/strapi/collections/article";
+import type { Article } from "@/strapi/collections/article";
+import type { GetStaticProps } from "next";
+
+interface Props {
+  articles: Article[];
+}
+
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const response = await articleService.find({
+    populate: ["author"],
+  });
+
+  return {
+    props: { articles: response.data },
+    revalidate: 60, // ISR: revalidate every 60 seconds
+  };
+};
+
+export default function ArticlesPage({ articles }: Props) {
+  return (
+    <ul>
+      {articles.map(article => (
+        <li key={article.documentId}>{article.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### getServerSideProps
+
+```tsx
+// pages/articles/[slug].tsx
+import { articleService } from "@/strapi/collections/article";
+import type { GetServerSideProps } from "next";
+
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const articles = await articleService.find({
+    filters: { slug: params?.slug as string },
+    populate: ["author", "cover"],
+  });
+
+  if (articles.data.length === 0) {
+    return { notFound: true };
+  }
+
+  return {
+    props: { article: articles.data[0] },
+  };
+};
+```
+
+## API Routes
+
+Create API routes that use services:
+
+<Tabs>
+  <TabItem label="App Router">
+    ```tsx
+    // app/api/articles/route.ts
+    import { articleService } from "@/strapi/collections/article";
+    import { NextResponse } from "next/server";
+
+    export async function GET(request: Request) {
+      const { searchParams } = new URL(request.url);
+      const page = Number(searchParams.get("page")) || 1;
+
+      const articles = await articleService.find({
+        pagination: { page, pageSize: 10 },
+      });
+
+      return NextResponse.json(articles);
+    }
+
+    export async function POST(request: Request) {
+      const data = await request.json();
+      const article = await articleService.create(data);
+      return NextResponse.json(article);
+    }
+    ```
+  </TabItem>
+  <TabItem label="Pages Router">
+    ```tsx
+    // pages/api/articles.ts
+    import { articleService } from "@/strapi/collections/article";
+    import type { NextApiRequest, NextApiResponse } from "next";
+
+    export default async function handler(
+      req: NextApiRequest,
+      res: NextApiResponse
+    ) {
+      if (req.method === "GET") {
+        const articles = await articleService.find();
+        return res.json(articles);
+      }
+
+      if (req.method === "POST") {
+        const article = await articleService.create(req.body);
+        return res.json(article);
+      }
+
+      res.status(405).end();
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Form Validation
+
+Use generated Zod schemas with React Hook Form:
+
+```tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  articleCreateSchema,
+  type ArticleCreateInput,
+} from "@/strapi/collections/article";
+
+export function CreateArticleForm() {
+  const form = useForm<ArticleCreateInput>({
+    resolver: zodResolver(articleCreateSchema),
+  });
+
+  const onSubmit = async (data: ArticleCreateInput) => {
+    const response = await fetch("/api/articles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    // Handle response
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <input {...form.register("title")} />
+      {form.formState.errors.title && (
+        <span>{form.formState.errors.title.message}</span>
+      )}
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+## Caching
+
+Next.js App Router caches fetch requests by default. The generated services use fetch under the hood, so caching works automatically.
+
+To revalidate:
+
+```tsx
+// Time-based
+const articles = await articleService.find();
+// Add to fetch options in client.ts if needed
+
+// On-demand
+import { revalidatePath, revalidateTag } from "next/cache";
+
+revalidatePath("/articles");
+revalidateTag("articles");
+```

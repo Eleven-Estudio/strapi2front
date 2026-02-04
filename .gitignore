@@ -36,4 +36,5 @@ coverage/
 *.bak
 *.tmp
 
-docs/
+# Ignore docs at root only (not apps/web/src/content/docs)
+/docs

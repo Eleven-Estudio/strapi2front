@@ -1,0 +1,307 @@
+---
+title: Astro Integration
+description: Using strapi2front with Astro and Astro Actions
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front has first-class support for Astro, including generated Astro Actions for type-safe server-side API calls.
+
+## Setup
+
+<Steps>
+
+1. **Configure strapi2front**
+
+   ```typescript
+   // strapi.config.ts
+   import { defineConfig } from "strapi2front";
+
+   export default defineConfig({
+     url: process.env.STRAPI_URL,
+     token: process.env.STRAPI_TOKEN,
+     output: {
+       path: "src/strapi",
+       structure: "by-feature",
+     },
+     features: {
+       types: true,
+       services: true,
+       actions: true, // Enable Astro Actions
+       schemas: true,
+     },
+   });
+   ```
+
+2. **Generate code**
+
+   ```bash
+   npx strapi2front sync
+   ```
+
+3. **Configure Astro**
+
+   Enable server output for actions:
+
+   ```typescript
+   // astro.config.mjs
+   export default defineConfig({
+     output: "server", // or "hybrid"
+   });
+   ```
+
+</Steps>
+
+## Using Generated Services
+
+In Astro pages and components:
+
+```astro
+---
+// src/pages/articles/index.astro
+import { articleService } from "@/strapi/collections/article";
+
+const articles = await articleService.find({
+  filters: { publishedAt: { $notNull: true } },
+  populate: ["author", "cover"],
+  sort: ["publishedAt:desc"],
+});
+---
+
+<ul>
+  {articles.data.map(article => (
+    <li>
+      <a href={`/articles/${article.slug}`}>{article.title}</a>
+    </li>
+  ))}
+</ul>
+```
+
+## Astro Actions
+
+strapi2front generates Astro Actions that wrap your services with type-safe input validation.
+
+### Setup Actions
+
+Register generated actions in your Astro config:
+
+```typescript
+// src/actions/index.ts
+import { articleActions } from "@/strapi/collections/article/actions";
+import { categoryActions } from "@/strapi/collections/category/actions";
+
+export const server = {
+  article: articleActions,
+  category: categoryActions,
+};
+```
+
+### Using Actions
+
+<Tabs>
+  <TabItem label="From Components">
+    ```astro
+    ---
+    // Server-side in .astro files
+    import { actions } from "astro:actions";
+
+    const result = await actions.article.find({
+      filters: { featured: true },
+      pagination: { pageSize: 5 },
+    });
+    ---
+    ```
+  </TabItem>
+  <TabItem label="From Client">
+    ```tsx
+    // Client-side in React/Vue/Svelte
+    import { actions } from "astro:actions";
+
+    function ArticleList() {
+      const [articles, setArticles] = useState([]);
+
+      useEffect(() => {
+        actions.article.find({ pagination: { pageSize: 10 } })
+          .then(result => setArticles(result.data.data));
+      }, []);
+
+      return <ul>{/* render articles */}</ul>;
+    }
+    ```
+  </TabItem>
+  <TabItem label="Form Submission">
+    ```astro
+    ---
+    import { actions } from "astro:actions";
+
+    if (Astro.request.method === "POST") {
+      const formData = await Astro.request.formData();
+      const result = await actions.article.create({
+        title: formData.get("title"),
+        content: formData.get("content"),
+      });
+
+      if (result.data) {
+        return Astro.redirect(`/articles/${result.data.data.slug}`);
+      }
+    }
+    ---
+
+    <form method="POST">
+      <input name="title" required />
+      <textarea name="content" required></textarea>
+      <button type="submit">Create Article</button>
+    </form>
+    ```
+  </TabItem>
+</Tabs>
+
+## Environment Variables
+
+Configure your `.env` file:
+
+```bash
+# .env
+STRAPI_URL=http://localhost:1337
+STRAPI_TOKEN=your-api-token
+```
+
+Access in Astro:
+
+```typescript
+// Server-side only
+const url = import.meta.env.STRAPI_URL;
+```
+
+<Aside type="caution">
+  Never expose `STRAPI_TOKEN` to the client. Keep it server-side only.
+</Aside>
+
+## Static Generation (SSG)
+
+For static sites, fetch data at build time:
+
+```astro
+---
+// src/pages/articles/[slug].astro
+import { articleService } from "@/strapi/collections/article";
+
+export async function getStaticPaths() {
+  const articles = await articleService.find({
+    fields: ["slug"],
+  });
+
+  return articles.data.map(article => ({
+    params: { slug: article.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+const article = await articleService.find({
+  filters: { slug },
+  populate: ["author", "cover", "categories"],
+});
+---
+```
+
+## Server-Side Rendering (SSR)
+
+For dynamic pages:
+
+```astro
+---
+// src/pages/articles/[slug].astro
+import { articleService } from "@/strapi/collections/article";
+
+const { slug } = Astro.params;
+
+const articles = await articleService.find({
+  filters: { slug },
+  populate: ["author", "cover"],
+});
+
+if (articles.data.length === 0) {
+  return Astro.redirect("/404");
+}
+
+const article = articles.data[0];
+---
+```
+
+## Image Handling
+
+Use Astro's Image component with Strapi media:
+
+```astro
+---
+import { Image } from "astro:assets";
+import { articleService } from "@/strapi/collections/article";
+
+const article = await articleService.findOne("abc123", {
+  populate: ["cover"],
+});
+
+const imageUrl = article.data.cover
+  ? `${import.meta.env.STRAPI_URL}${article.data.cover.url}`
+  : null;
+---
+
+{imageUrl && (
+  <Image
+    src={imageUrl}
+    alt={article.data.cover?.alternativeText || ""}
+    width={article.data.cover?.width || 800}
+    height={article.data.cover?.height || 600}
+  />
+)}
+```
+
+## Content Collections Alternative
+
+You can also use Astro Content Collections with Strapi as a loader:
+
+```typescript
+// src/content/config.ts
+import { defineCollection, z } from "astro:content";
+
+const articles = defineCollection({
+  loader: async () => {
+    const response = await fetch(`${STRAPI_URL}/api/articles`);
+    const data = await response.json();
+    return data.data.map(article => ({
+      id: article.documentId,
+      ...article,
+    }));
+  },
+  schema: z.object({
+    title: z.string(),
+    content: z.string(),
+    // ...
+  }),
+});
+```
+
+## Example Project Structure
+
+```
+src/
+├── actions/
+│   └── index.ts          # Register strapi2front actions
+├── strapi/               # Generated by strapi2front
+│   ├── collections/
+│   │   └── article/
+│   │       ├── index.ts
+│   │       ├── types.ts
+│   │       ├── service.ts
+│   │       ├── schemas.ts
+│   │       └── actions.ts
+│   └── shared/
+│       └── client.ts
+├── pages/
+│   ├── index.astro
+│   └── articles/
+│       ├── index.astro
+│       └── [slug].astro
+└── components/
+    └── ArticleCard.astro
+```

@@ -1,0 +1,333 @@
+---
+title: Nuxt Integration
+description: Using strapi2front with Nuxt 3
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front works with Nuxt 3 for type-safe Strapi integration.
+
+## Setup
+
+```typescript
+// strapi.config.ts
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  url: process.env.STRAPI_URL,
+  token: process.env.STRAPI_TOKEN,
+  output: {
+    path: "strapi", // Nuxt auto-imports from root
+    structure: "by-feature",
+  },
+  features: {
+    types: true,
+    services: true,
+    actions: false,
+    schemas: true,
+  },
+});
+```
+
+Generate code:
+
+```bash
+npx strapi2front sync
+```
+
+## Environment Variables
+
+```bash
+# .env
+STRAPI_URL=http://localhost:1337
+STRAPI_TOKEN=your-api-token
+```
+
+Access in Nuxt:
+
+```typescript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  runtimeConfig: {
+    strapiUrl: process.env.STRAPI_URL,
+    strapiToken: process.env.STRAPI_TOKEN,
+    public: {
+      strapiUrl: process.env.STRAPI_URL,
+    },
+  },
+});
+```
+
+## Using Services
+
+### In Pages
+
+```vue
+<!-- pages/articles/index.vue -->
+<script setup lang="ts">
+import { articleService } from "~/strapi/collections/article";
+
+const { data: articles } = await useAsyncData("articles", () =>
+  articleService.find({
+    filters: { publishedAt: { $notNull: true } },
+    populate: ["author", "cover"],
+  })
+);
+</script>
+
+<template>
+  <ul>
+    <li v-for="article in articles?.data" :key="article.documentId">
+      <NuxtLink :to="`/articles/${article.slug}`">
+        {{ article.title }}
+      </NuxtLink>
+    </li>
+  </ul>
+</template>
+```
+
+### Dynamic Routes
+
+```vue
+<!-- pages/articles/[slug].vue -->
+<script setup lang="ts">
+import { articleService } from "~/strapi/collections/article";
+
+const route = useRoute();
+const slug = route.params.slug as string;
+
+const { data: article, error } = await useAsyncData(
+  `article-${slug}`,
+  async () => {
+    const response = await articleService.find({
+      filters: { slug },
+      populate: ["author", "cover", "categories"],
+    });
+    return response.data[0] || null;
+  }
+);
+
+if (error.value || !article.value) {
+  throw createError({ statusCode: 404, message: "Article not found" });
+}
+</script>
+
+<template>
+  <article v-if="article">
+    <h1>{{ article.title }}</h1>
+    <div v-html="article.content" />
+  </article>
+</template>
+```
+
+## Composables
+
+Create a composable for reusable data fetching:
+
+```typescript
+// composables/useArticles.ts
+import { articleService } from "~/strapi/collections/article";
+import type { Article } from "~/strapi/collections/article";
+
+export function useArticles() {
+  const articles = ref<Article[]>([]);
+  const loading = ref(false);
+  const error = ref<Error | null>(null);
+
+  const fetch = async (filters?: Record<string, unknown>) => {
+    loading.value = true;
+    try {
+      const response = await articleService.find({
+        filters,
+        populate: ["author"],
+      });
+      articles.value = response.data;
+    } catch (e) {
+      error.value = e as Error;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  return {
+    articles,
+    loading,
+    error,
+    fetch,
+  };
+}
+```
+
+Usage:
+
+```vue
+<script setup>
+const { articles, loading, fetch } = useArticles();
+
+onMounted(() => {
+  fetch({ featured: true });
+});
+</script>
+```
+
+## Server Routes (API)
+
+Create server API routes:
+
+```typescript
+// server/api/articles/index.get.ts
+import { articleService } from "~/strapi/collections/article";
+
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event);
+
+  const articles = await articleService.find({
+    pagination: {
+      page: Number(query.page) || 1,
+      pageSize: Number(query.pageSize) || 10,
+    },
+  });
+
+  return articles;
+});
+```
+
+```typescript
+// server/api/articles/index.post.ts
+import { articleService } from "~/strapi/collections/article";
+import { articleCreateSchema } from "~/strapi/collections/article/schemas";
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event);
+
+  // Validate with Zod
+  const validated = articleCreateSchema.parse(body);
+
+  const article = await articleService.create(validated);
+  return article;
+});
+```
+
+## Form Validation
+
+Use generated schemas with VeeValidate:
+
+```vue
+<script setup lang="ts">
+import { useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
+import { articleCreateSchema } from "~/strapi/collections/article";
+
+const schema = toTypedSchema(articleCreateSchema);
+
+const { handleSubmit, errors, defineField } = useForm({
+  validationSchema: schema,
+});
+
+const [title, titleAttrs] = defineField("title");
+const [content, contentAttrs] = defineField("content");
+
+const onSubmit = handleSubmit(async (values) => {
+  await $fetch("/api/articles", {
+    method: "POST",
+    body: values,
+  });
+});
+</script>
+
+<template>
+  <form @submit="onSubmit">
+    <input v-model="title" v-bind="titleAttrs" />
+    <span v-if="errors.title">{{ errors.title }}</span>
+
+    <textarea v-model="content" v-bind="contentAttrs" />
+    <span v-if="errors.content">{{ errors.content }}</span>
+
+    <button type="submit">Create</button>
+  </form>
+</template>
+```
+
+## Pinia Store
+
+Integrate with Pinia for state management:
+
+```typescript
+// stores/articles.ts
+import { defineStore } from "pinia";
+import { articleService } from "~/strapi/collections/article";
+import type { Article } from "~/strapi/collections/article";
+
+export const useArticlesStore = defineStore("articles", {
+  state: () => ({
+    articles: [] as Article[],
+    loading: false,
+  }),
+
+  actions: {
+    async fetchAll() {
+      this.loading = true;
+      try {
+        const response = await articleService.find({
+          populate: ["author"],
+        });
+        this.articles = response.data;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async create(data: Parameters<typeof articleService.create>[0]) {
+      const response = await articleService.create(data);
+      this.articles.push(response.data);
+      return response;
+    },
+  },
+});
+```
+
+## SSR Considerations
+
+<Aside>
+  Services run on the server during SSR. Ensure environment variables are available server-side.
+</Aside>
+
+For client-only fetching:
+
+```vue
+<script setup>
+const articles = ref([]);
+
+// Only runs on client
+onMounted(async () => {
+  const response = await articleService.find();
+  articles.value = response.data;
+});
+</script>
+```
+
+## Nuxt Image
+
+Use with `@nuxt/image` for optimized images:
+
+```vue
+<script setup>
+const config = useRuntimeConfig();
+
+const getImageUrl = (media) => {
+  if (!media) return null;
+  if (media.url.startsWith("http")) return media.url;
+  return `${config.public.strapiUrl}${media.url}`;
+};
+</script>
+
+<template>
+  <NuxtImg
+    v-if="article.cover"
+    :src="getImageUrl(article.cover)"
+    :alt="article.cover.alternativeText"
+    width="800"
+    height="400"
+  />
+</template>
+```

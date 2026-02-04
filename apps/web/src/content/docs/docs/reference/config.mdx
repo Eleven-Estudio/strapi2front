@@ -1,0 +1,320 @@
+---
+title: Config Options
+description: Complete reference for strapi.config.ts options
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Complete reference for all configuration options in `strapi.config.ts`.
+
+## Configuration File
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  // options here
+});
+```
+
+## Options Reference
+
+### `url`
+
+**Type:** `string`
+**Required:** Yes
+
+The base URL of your Strapi server.
+
+```typescript
+url: "http://localhost:1337"
+// or with environment variable
+url: process.env.STRAPI_URL || "http://localhost:1337"
+```
+
+---
+
+### `token`
+
+**Type:** `string | undefined`
+**Required:** No (but needed for protected schemas)
+
+Your Strapi API token for authentication.
+
+```typescript
+token: process.env.STRAPI_TOKEN
+```
+
+<Aside type="caution">
+  Never hardcode tokens. Always use environment variables.
+</Aside>
+
+---
+
+### `apiPrefix`
+
+**Type:** `string`
+**Default:** `"/api"`
+
+The API prefix configured in your Strapi instance.
+
+```typescript
+apiPrefix: "/api" // default
+// or custom prefix
+apiPrefix: "/v1"
+```
+
+---
+
+### `strapiVersion`
+
+**Type:** `"v4" | "v5"`
+**Default:** Auto-detected
+
+Explicitly set the Strapi version. Usually auto-detected.
+
+```typescript
+strapiVersion: "v5"
+```
+
+---
+
+### `outputFormat`
+
+**Type:** `"typescript" | "jsdoc"`
+**Default:** `"typescript"`
+
+Choose output format:
+- `typescript`: Generates `.ts` files with type annotations
+- `jsdoc`: Generates `.js` files with JSDoc comments
+
+```typescript
+outputFormat: "typescript" // default
+// or for JavaScript projects
+outputFormat: "jsdoc"
+```
+
+---
+
+### `moduleType`
+
+**Type:** `"esm" | "commonjs"`
+**Default:** Auto-detected
+
+Module system for JSDoc output. Auto-detected from package.json.
+
+```typescript
+moduleType: "esm"
+```
+
+---
+
+### `output`
+
+**Type:** `object`
+
+Configure where and how files are generated.
+
+```typescript
+output: {
+  path: "src/strapi",
+  structure: "by-feature",
+  types: "types",
+  services: "services",
+  actions: "actions/strapi",
+}
+```
+
+#### `output.path`
+
+**Type:** `string`
+**Default:** `"src/strapi"`
+
+Base output directory for generated files.
+
+#### `output.structure`
+
+**Type:** `"by-feature" | "by-layer"`
+**Default:** `"by-layer"`
+
+Organization structure:
+- `by-feature`: Groups files by content type (recommended)
+- `by-layer`: Groups files by type (types/, services/, etc.)
+
+#### `output.types`
+
+**Type:** `string`
+**Default:** `"types"`
+
+Subdirectory for types (only used with `by-layer` structure).
+
+#### `output.services`
+
+**Type:** `string`
+**Default:** `"services"`
+
+Subdirectory for services (only used with `by-layer` structure).
+
+#### `output.actions`
+
+**Type:** `string`
+**Default:** `"actions/strapi"`
+
+Subdirectory for Astro actions (only used with `by-layer` structure).
+
+---
+
+### `features`
+
+**Type:** `object`
+
+Enable or disable specific generators.
+
+```typescript
+features: {
+  types: true,
+  services: true,
+  actions: true,
+  schemas: true,
+}
+```
+
+#### `features.types`
+
+**Type:** `boolean`
+**Default:** `true`
+
+Generate TypeScript interfaces for content types.
+
+#### `features.services`
+
+**Type:** `boolean`
+**Default:** `true`
+
+Generate API service functions with CRUD operations.
+
+#### `features.actions`
+
+**Type:** `boolean`
+**Default:** `false`
+
+Generate Astro actions. Only works with `outputFormat: "typescript"`.
+
+#### `features.schemas`
+
+**Type:** `boolean`
+**Default:** `false`
+
+Generate Zod validation schemas.
+
+---
+
+### `schemaOptions`
+
+**Type:** `object`
+
+Configure Zod schema generation.
+
+```typescript
+schemaOptions: {
+  advancedRelations: true,
+}
+```
+
+#### `schemaOptions.advancedRelations`
+
+**Type:** `boolean`
+**Default:** `false`
+
+Enable advanced Strapi v5 relation format with `connect`, `disconnect`, and `set` operations.
+
+When `false`:
+```typescript
+// Relations as simple IDs
+author: z.string().optional()
+categories: z.array(z.string()).optional()
+```
+
+When `true`:
+```typescript
+// Relations with connect/disconnect/set
+categories: z.union([
+  z.array(z.string()),
+  z.object({
+    connect: z.array(...).optional(),
+    disconnect: z.array(...).optional(),
+    set: z.array(...).optional(),
+  }),
+]).optional()
+```
+
+---
+
+## Full Example
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  // Connection
+  url: process.env.STRAPI_URL || "http://localhost:1337",
+  token: process.env.STRAPI_TOKEN,
+  apiPrefix: "/api",
+  strapiVersion: "v5",
+
+  // Output format
+  outputFormat: "typescript",
+
+  // File organization
+  output: {
+    path: "src/strapi",
+    structure: "by-feature",
+  },
+
+  // Features
+  features: {
+    types: true,
+    services: true,
+    actions: true,
+    schemas: true,
+  },
+
+  // Schema options
+  schemaOptions: {
+    advancedRelations: true,
+  },
+});
+```
+
+## TypeScript Support
+
+The `defineConfig` function provides full TypeScript support with autocompletion and validation:
+
+```typescript
+import { defineConfig } from "strapi2front";
+import type { Config } from "strapi2front";
+
+// Full type checking and autocompletion
+export default defineConfig({
+  url: "http://localhost:1337",
+  // ... other options
+});
+```
+
+## Environment-Specific Config
+
+Use environment variables for different environments:
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+const isDev = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  url: isDev
+    ? "http://localhost:1337"
+    : process.env.STRAPI_URL,
+  token: process.env.STRAPI_TOKEN,
+  // ... other options
+});
+```

@@ -1,0 +1,305 @@
+---
+title: Zod Schemas
+description: Using generated Zod schemas for form validation
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front generates Zod schemas for form validation, compatible with React Hook Form, TanStack Form, Formik, and other form libraries.
+
+## Generated Schemas
+
+For each content type, two schemas are generated:
+
+```typescript
+// For creating new entries (required fields enforced)
+export const articleCreateSchema = z.object({...});
+
+// For updating entries (all fields optional)
+export const articleUpdateSchema = z.object({...});
+
+// Type inference
+export type ArticleCreateInput = z.infer<typeof articleCreateSchema>;
+export type ArticleUpdateInput = z.infer<typeof articleUpdateSchema>;
+```
+
+## Schema Examples
+
+### Basic Fields
+
+```typescript
+export const articleCreateSchema = z.object({
+  title: z.string(),
+  slug: z.string(),
+  content: z.string(),
+  views: z.number().int(),
+  rating: z.number(),
+  featured: z.boolean(),
+  publishedAt: z.string().datetime().nullable(),
+});
+```
+
+### Enumerations
+
+```typescript
+export const articleCreateSchema = z.object({
+  status: z.enum(["draft", "review", "published"]),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+});
+```
+
+### Optional Fields
+
+```typescript
+export const articleCreateSchema = z.object({
+  title: z.string(),              // Required
+  subtitle: z.string().optional(), // Optional in Strapi
+  excerpt: z.string().nullable(),  // Can be null
+});
+```
+
+## Using with React Hook Form
+
+<Tabs>
+  <TabItem label="Basic">
+    ```tsx
+    import { useForm } from "react-hook-form";
+    import { zodResolver } from "@hookform/resolvers/zod";
+    import {
+      articleCreateSchema,
+      type ArticleCreateInput
+    } from "@/strapi/collections/article";
+
+    function CreateArticleForm() {
+      const form = useForm<ArticleCreateInput>({
+        resolver: zodResolver(articleCreateSchema),
+        defaultValues: {
+          title: "",
+          content: "",
+        },
+      });
+
+      const onSubmit = async (data: ArticleCreateInput) => {
+        await articleService.create(data);
+      };
+
+      return (
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <input {...form.register("title")} />
+          {form.formState.errors.title && (
+            <span>{form.formState.errors.title.message}</span>
+          )}
+          <textarea {...form.register("content")} />
+          <button type="submit">Create</button>
+        </form>
+      );
+    }
+    ```
+  </TabItem>
+  <TabItem label="With Relations">
+    ```tsx
+    import { articleCreateSchema } from "@/strapi/collections/article";
+
+    function CreateArticleForm({ authors, categories }) {
+      const form = useForm({
+        resolver: zodResolver(articleCreateSchema),
+      });
+
+      return (
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <input {...form.register("title")} />
+
+          {/* Single relation */}
+          <select {...form.register("author")}>
+            {authors.map(a => (
+              <option key={a.documentId} value={a.documentId}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Multiple relations */}
+          <select multiple {...form.register("categories")}>
+            {categories.map(c => (
+              <option key={c.documentId} value={c.documentId}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          <button type="submit">Create</button>
+        </form>
+      );
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Using with TanStack Form
+
+```tsx
+import { useForm } from "@tanstack/react-form";
+import { zodValidator } from "@tanstack/zod-form-adapter";
+import { articleCreateSchema } from "@/strapi/collections/article";
+
+function CreateArticleForm() {
+  const form = useForm({
+    defaultValues: { title: "", content: "" },
+    onSubmit: async ({ value }) => {
+      await articleService.create(value);
+    },
+    validatorAdapter: zodValidator(),
+    validators: {
+      onChange: articleCreateSchema,
+    },
+  });
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit(); }}>
+      <form.Field name="title">
+        {(field) => (
+          <>
+            <input
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            {field.state.meta.errors && <span>{field.state.meta.errors}</span>}
+          </>
+        )}
+      </form.Field>
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+## Relations in Schemas
+
+### Simple Relations
+
+By default, relations are typed as document IDs:
+
+```typescript
+export const articleCreateSchema = z.object({
+  author: z.string().optional(),        // Single relation
+  categories: z.array(z.string()).optional(), // Multiple relations
+});
+
+// Usage
+const data = {
+  title: "My Article",
+  author: "authorDocumentId123",
+  categories: ["cat1", "cat2"],
+};
+```
+
+### Advanced Relations
+
+Enable `advancedRelations` for full Strapi v5 API support:
+
+```typescript
+// strapi.config.ts
+schemaOptions: {
+  advancedRelations: true,
+}
+```
+
+This generates schemas supporting both shorthand and longhand formats:
+
+```typescript
+export const articleCreateSchema = z.object({
+  categories: z.union([
+    // Shorthand: array of documentIds
+    z.array(z.string()),
+    // Longhand: connect/disconnect/set
+    z.object({
+      connect: z.array(z.union([
+        z.string(),
+        z.object({
+          documentId: z.string(),
+          locale: z.string().optional(),
+          status: z.enum(["draft", "published"]).optional(),
+          position: z.object({
+            before: z.string().optional(),
+            after: z.string().optional(),
+            start: z.boolean().optional(),
+            end: z.boolean().optional(),
+          }).optional(),
+        }),
+      ])).optional(),
+      disconnect: z.array(z.union([
+        z.string(),
+        z.object({
+          documentId: z.string(),
+          locale: z.string().optional(),
+          status: z.enum(["draft", "published"]).optional(),
+        }),
+      ])).optional(),
+      set: z.array(...).optional(),
+    }),
+  ]).optional(),
+});
+```
+
+<Aside type="tip">
+  With `advancedRelations`, you can connect specific localized or draft versions of related content.
+</Aside>
+
+## Media Fields
+
+Media fields use numeric IDs (Strapi's internal file IDs):
+
+```typescript
+export const articleCreateSchema = z.object({
+  // Single media
+  cover: z.number().int().positive().nullable(),
+  // Multiple media
+  gallery: z.array(z.number().int().positive()).optional(),
+});
+
+// Usage with file upload
+const fileId = await uploadFile(file); // Returns numeric ID
+await articleService.create({
+  title: "Article with Image",
+  cover: fileId,
+});
+```
+
+## Update Schemas
+
+Update schemas make all fields optional for partial updates:
+
+```typescript
+export const articleUpdateSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  author: z.string().optional(),
+});
+
+// Valid partial update
+const data: ArticleUpdateInput = {
+  title: "Only updating title",
+};
+```
+
+## Extending Schemas
+
+You can extend generated schemas for custom validation:
+
+```typescript
+import { articleCreateSchema } from "@/strapi/collections/article";
+
+const extendedSchema = articleCreateSchema.extend({
+  title: z.string().min(10, "Title must be at least 10 characters"),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "Invalid slug format"),
+});
+```
+
+Or refine existing fields:
+
+```typescript
+const refinedSchema = articleCreateSchema.refine(
+  (data) => data.publishedAt ? data.content.length > 100 : true,
+  { message: "Published articles must have at least 100 characters" }
+);
+```

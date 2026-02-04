@@ -1,0 +1,309 @@
+---
+title: Relations
+description: Working with Strapi relations in strapi2front
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front provides full support for Strapi relations, including the advanced relation API introduced in Strapi v5.
+
+## Relation Types
+
+Strapi supports several relation types:
+
+| Type | Description | TypeScript |
+|------|-------------|------------|
+| `oneToOne` | Single relation, single target | `Author \| undefined` |
+| `manyToOne` | Multiple sources, single target | `Category \| undefined` |
+| `oneToMany` | Single source, multiple targets | `Comment[] \| undefined` |
+| `manyToMany` | Multiple sources, multiple targets | `Tag[] \| undefined` |
+
+## Reading Relations
+
+Relations must be explicitly populated to be included in responses:
+
+```typescript
+// Without population - relations are undefined
+const article = await articleService.findOne("abc123");
+console.log(article.author); // undefined
+
+// With population - relations are loaded
+const article = await articleService.findOne("abc123", {
+  populate: ["author", "categories"],
+});
+console.log(article.author); // { id: 1, name: "John", ... }
+```
+
+### Nested Population
+
+Load nested relations:
+
+```typescript
+const article = await articleService.findOne("abc123", {
+  populate: {
+    author: {
+      populate: ["avatar", "company"],
+    },
+    categories: {
+      fields: ["name", "slug"],
+    },
+  },
+});
+```
+
+## Writing Relations
+
+### Simple Format
+
+The simplest way to set relations is using document IDs:
+
+```typescript
+// Single relation
+await articleService.create({
+  title: "New Article",
+  author: "authorDocumentId",
+});
+
+// Multiple relations
+await articleService.create({
+  title: "New Article",
+  categories: ["cat1", "cat2", "cat3"],
+});
+```
+
+### Advanced Relations (Strapi v5)
+
+Enable advanced relations in your config:
+
+```typescript
+// strapi.config.ts
+schemaOptions: {
+  advancedRelations: true,
+}
+```
+
+#### Connect
+
+Add relations while preserving existing ones:
+
+```typescript
+await articleService.update("abc123", {
+  categories: {
+    connect: ["newCat1", "newCat2"],
+  },
+});
+```
+
+#### Disconnect
+
+Remove specific relations:
+
+```typescript
+await articleService.update("abc123", {
+  categories: {
+    disconnect: ["catToRemove"],
+  },
+});
+```
+
+#### Set
+
+Replace all relations (removes existing, adds new):
+
+```typescript
+await articleService.update("abc123", {
+  categories: {
+    set: ["onlyCat1", "onlyCat2"],
+  },
+});
+```
+
+<Aside type="caution">
+  `set` cannot be combined with `connect` or `disconnect` in the same operation.
+</Aside>
+
+#### Combining Connect and Disconnect
+
+```typescript
+await articleService.update("abc123", {
+  categories: {
+    connect: ["newCat"],
+    disconnect: ["oldCat"],
+  },
+});
+```
+
+## Relation Ordering
+
+Control the order of relations using position:
+
+<Tabs>
+  <TabItem label="After">
+    ```typescript
+    // Add after specific item
+    await articleService.update("abc123", {
+      categories: {
+        connect: [{
+          documentId: "newCat",
+          position: { after: "existingCat" },
+        }],
+      },
+    });
+    ```
+  </TabItem>
+  <TabItem label="Before">
+    ```typescript
+    // Add before specific item
+    await articleService.update("abc123", {
+      categories: {
+        connect: [{
+          documentId: "newCat",
+          position: { before: "existingCat" },
+        }],
+      },
+    });
+    ```
+  </TabItem>
+  <TabItem label="Start/End">
+    ```typescript
+    // Add at start
+    await articleService.update("abc123", {
+      categories: {
+        connect: [{
+          documentId: "firstCat",
+          position: { start: true },
+        }],
+      },
+    });
+
+    // Add at end
+    await articleService.update("abc123", {
+      categories: {
+        connect: [{
+          documentId: "lastCat",
+          position: { end: true },
+        }],
+      },
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## i18n Relations
+
+Connect to specific localized versions:
+
+```typescript
+await articleService.update("abc123", {
+  relatedArticles: {
+    connect: [{
+      documentId: "relatedId",
+      locale: "es", // Connect to Spanish version
+    }],
+  },
+});
+```
+
+## Draft & Publish Relations
+
+Connect to specific publication states:
+
+```typescript
+await articleService.update("abc123", {
+  relatedArticles: {
+    connect: [{
+      documentId: "relatedId",
+      status: "published", // Only connect to published version
+    }],
+  },
+});
+
+// Connect to draft version
+await articleService.update("abc123", {
+  relatedArticles: {
+    connect: [{
+      documentId: "draftId",
+      status: "draft",
+    }],
+  },
+});
+```
+
+## Full Example
+
+Complete example with all advanced relation features:
+
+```typescript
+await articleService.update("abc123", {
+  // Replace all tags
+  tags: {
+    set: ["tag1", "tag2", "tag3"],
+  },
+
+  // Modify categories (connect + disconnect)
+  categories: {
+    connect: [
+      { documentId: "newCat", position: { start: true } },
+      { documentId: "anotherCat", position: { after: "newCat" } },
+    ],
+    disconnect: ["oldCat"],
+  },
+
+  // Connect to localized content
+  relatedArticles: {
+    connect: [
+      { documentId: "spanishArticle", locale: "es" },
+      { documentId: "publishedOnly", status: "published" },
+    ],
+  },
+});
+```
+
+## Form Handling
+
+With advanced relations enabled, your forms can handle complex relation updates:
+
+```tsx
+function EditArticleCategories({ article, allCategories }) {
+  const form = useForm({
+    resolver: zodResolver(articleUpdateSchema),
+    defaultValues: {
+      categories: article.categories?.map(c => c.documentId) || [],
+    },
+  });
+
+  const onSubmit = async (data) => {
+    const currentIds = article.categories?.map(c => c.documentId) || [];
+    const newIds = data.categories;
+
+    // Calculate connect/disconnect
+    const toConnect = newIds.filter(id => !currentIds.includes(id));
+    const toDisconnect = currentIds.filter(id => !newIds.includes(id));
+
+    await articleService.update(article.documentId, {
+      categories: {
+        connect: toConnect,
+        disconnect: toDisconnect,
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Multi-select for categories */}
+    </form>
+  );
+}
+```
+
+## Strapi v4 vs v5
+
+| Feature | Strapi v4 | Strapi v5 |
+|---------|-----------|-----------|
+| Simple relations | `id` or `[id]` | `documentId` or `[documentId]` |
+| Connect/Disconnect | Limited | Full support |
+| Position ordering | No | Yes |
+| i18n in relations | No | Yes |
+| Status in relations | No | Yes |
+
+strapi2front generates appropriate schemas based on your Strapi version.

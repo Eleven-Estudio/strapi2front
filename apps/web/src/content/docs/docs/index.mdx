@@ -1,0 +1,77 @@
+---
+title: Introduction
+description: Generate TypeScript types, services, and actions from your Strapi schema
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+**strapi2front** is a CLI tool that generates TypeScript types, API services, Zod schemas, and framework-specific code from your Strapi schema.
+
+## Features
+
+<CardGrid stagger>
+  <Card title="Type-Safe API" icon="seti:typescript">
+    Auto-generate TypeScript types matching your Strapi content types, including relations, components, and media.
+  </Card>
+  <Card title="API Services" icon="rocket">
+    Generate ready-to-use service functions with full CRUD operations, filtering, pagination, and population.
+  </Card>
+  <Card title="Zod Schemas" icon="approve-check">
+    Create validation schemas for forms with React Hook Form, TanStack Form, and more.
+  </Card>
+  <Card title="Framework Integrations" icon="puzzle">
+    First-class support for Astro Actions, with Next.js and Nuxt support coming soon.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+After running `npx strapi2front sync`, you get:
+
+```typescript
+// Auto-generated types
+interface Article {
+  id: number;
+  documentId: string;
+  title: string;
+  content: string;
+  author: Author;
+  publishedAt: string | null;
+}
+
+// Ready-to-use service
+import { articleService } from '@/strapi/collections/article';
+
+const articles = await articleService.find({
+  filters: { title: { $contains: 'TypeScript' } },
+  populate: ['author'],
+});
+
+// Zod schema for forms
+import { articleCreateSchema } from '@/strapi/collections/article/schemas';
+
+const form = useForm({
+  resolver: zodResolver(articleCreateSchema),
+});
+```
+
+## Why strapi2front?
+
+- **Zero Configuration**: Works out of the box with sensible defaults
+- **Strapi v4 & v5**: Full support for both versions with automatic detection
+- **By-Feature Architecture**: Organize generated code by content type for better scalability
+- **i18n Support**: Built-in localization support for multilingual content
+- **Draft & Publish**: Full support for Strapi's draft and publish workflow
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Quick Start" icon="rocket">
+    Get up and running in under 5 minutes.
+    [Quick Start Guide](/docs/quick-start)
+  </Card>
+  <Card title="Installation" icon="setting">
+    Detailed installation and setup instructions.
+    [Installation Guide](/docs/installation)
+  </Card>
+</CardGrid>

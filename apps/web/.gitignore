@@ -38,3 +38,6 @@ bun.lockb
 
 # Adapter
 .vercel
+
+# Ignore docs at root only (Starlight generates this, but we keep src/content/docs)
+/docs/

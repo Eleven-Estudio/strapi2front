@@ -1,0 +1,226 @@
+---
+title: Types
+description: Understanding generated TypeScript types from your Strapi schema
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+strapi2front generates TypeScript interfaces that match your Strapi content types exactly, including all fields, relations, and components.
+
+## Generated Types
+
+For each content type, strapi2front generates:
+
+- **Base interface** - The content type with all fields
+- **Response types** - For API responses with metadata
+- **Request types** - For create/update operations
+
+### Collection Types
+
+```typescript
+// types.ts
+export interface Article {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  content: string;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  locale: string;
+}
+
+// With populated relations
+export interface ArticleWithRelations extends Article {
+  author?: Author;
+  categories?: Category[];
+  cover?: StrapiMedia;
+}
+```
+
+### Single Types
+
+```typescript
+export interface Homepage {
+  id: number;
+  documentId: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  featuredArticles?: Article[];
+}
+```
+
+### Components
+
+```typescript
+export interface SharedSeo {
+  metaTitle: string;
+  metaDescription: string;
+  shareImage?: StrapiMedia;
+}
+```
+
+## Field Type Mapping
+
+| Strapi Type | TypeScript Type |
+|-------------|-----------------|
+| `string` | `string` |
+| `text` | `string` |
+| `richtext` | `string` |
+| `blocks` | `BlocksContent` |
+| `integer` | `number` |
+| `biginteger` | `string` |
+| `decimal` | `number` |
+| `float` | `number` |
+| `boolean` | `boolean` |
+| `date` | `string` |
+| `datetime` | `string` |
+| `time` | `string` |
+| `json` | `unknown` |
+| `email` | `string` |
+| `password` | `string` |
+| `enumeration` | Union type |
+| `uid` | `string` |
+
+## Relations
+
+Relations are typed based on their cardinality:
+
+```typescript
+// One-to-one / Many-to-one
+author?: Author;
+
+// One-to-many / Many-to-many
+categories?: Category[];
+```
+
+<Aside>
+  Relations are optional by default because they require explicit population in Strapi.
+</Aside>
+
+## Media Fields
+
+Media fields use the `StrapiMedia` type:
+
+```typescript
+export interface StrapiMedia {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number | null;
+  height: number | null;
+  formats: StrapiMediaFormats | null;
+  url: string;
+  mime: string;
+  size: number;
+}
+
+// Single media
+cover?: StrapiMedia;
+
+// Multiple media
+gallery?: StrapiMedia[];
+```
+
+## Enumeration Fields
+
+Enumerations become TypeScript union types:
+
+```typescript
+// Strapi enumeration: ["draft", "review", "published"]
+status: "draft" | "review" | "published";
+```
+
+## Blocks (Rich Text)
+
+If you have Blocks fields and install `@strapi/blocks-react-renderer`:
+
+```typescript
+import type { BlocksContent } from "@strapi/blocks-react-renderer";
+
+content: BlocksContent;
+```
+
+Without the package:
+
+```typescript
+content: unknown[];
+```
+
+## Dynamic Zones
+
+Dynamic zones are typed as discriminated unions:
+
+```typescript
+type ContentBlock =
+  | { __component: "blocks.hero"; title: string; image: StrapiMedia }
+  | { __component: "blocks.text"; content: string }
+  | { __component: "blocks.gallery"; images: StrapiMedia[] };
+
+// Usage
+content?: ContentBlock[];
+```
+
+## API Response Types
+
+For API responses with metadata:
+
+```typescript
+export interface ArticleListResponse {
+  data: Article[];
+  meta: {
+    pagination: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    };
+  };
+}
+
+export interface ArticleSingleResponse {
+  data: Article;
+  meta: Record<string, unknown>;
+}
+```
+
+## Using Types
+
+Import and use types for type-safe code:
+
+```typescript
+import type { Article, ArticleWithRelations } from "@/strapi/collections/article";
+
+// Type function parameters
+function renderArticle(article: Article) {
+  return <h1>{article.title}</h1>;
+}
+
+// Type API responses
+const response: ArticleListResponse = await fetch("/api/articles");
+
+// Type with relations
+function ArticleCard({ article }: { article: ArticleWithRelations }) {
+  return (
+    <div>
+      <h2>{article.title}</h2>
+      {article.author && <span>By {article.author.name}</span>}
+    </div>
+  );
+}
+```
+
+## Strapi v4 vs v5
+
+Types differ slightly between versions:
+
+| Feature | Strapi v4 | Strapi v5 |
+|---------|-----------|-----------|
+| ID field | `id: number` | `id: number` + `documentId: string` |
+| Relations | Nested in `data.attributes` | Flat structure |
+| Timestamps | `createdAt`, `updatedAt` | Same |
+
+strapi2front auto-detects your Strapi version and generates appropriate types.

@@ -1,0 +1,159 @@
+---
+title: Output Structure
+description: Understanding the different output structures for generated code
+---
+
+import { FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+
+strapi2front supports two output structures: **by-feature** and **by-layer**. Choose the one that best fits your project's architecture.
+
+## By-Feature (Recommended)
+
+The by-feature structure organizes code by content type, following a "screaming architecture" pattern. Each content type has its own folder with all related files.
+
+```typescript
+output: {
+  path: "src/strapi",
+  structure: "by-feature",
+}
+```
+
+<FileTree>
+- src/strapi/
+  - collections/
+    - article/
+      - index.ts (exports)
+      - types.ts
+      - service.ts
+      - schemas.ts
+    - category/
+      - index.ts
+      - types.ts
+      - service.ts
+      - schemas.ts
+  - singles/
+    - homepage/
+      - index.ts
+      - types.ts
+      - service.ts
+      - schemas.ts
+  - components/
+    - shared/
+      - seo/
+        - types.ts
+  - shared/
+    - client.ts
+    - locales.ts
+    - types.ts
+</FileTree>
+
+### Benefits
+
+- **Scalability**: Easy to navigate in large projects
+- **Encapsulation**: Each content type is self-contained
+- **Co-location**: Related code lives together
+- **Easy imports**: `import { articleService } from '@/strapi/collections/article'`
+
+## By-Layer
+
+The by-layer structure organizes code by type (types, services, actions). This is the traditional approach used in many projects.
+
+```typescript
+output: {
+  path: "src/strapi",
+  structure: "by-layer",
+  types: "types",
+  services: "services",
+  actions: "actions/strapi",
+}
+```
+
+<FileTree>
+- src/strapi/
+  - types/
+    - article.ts
+    - category.ts
+    - homepage.ts
+    - index.ts
+  - services/
+    - article.ts
+    - category.ts
+    - homepage.ts
+    - index.ts
+  - actions/
+    - strapi/
+      - article.ts
+      - category.ts
+  - client.ts
+  - locales.ts
+</FileTree>
+
+### Benefits
+
+- **Familiarity**: Common pattern in many codebases
+- **Separation**: Clear separation between types, services, and actions
+- **Simpler**: Fewer directories for small projects
+
+## Switching Structures
+
+When you change the `structure` option and run `sync`, strapi2front will:
+
+1. Detect files from the previous structure
+2. Prompt you to clean orphaned files
+3. Generate files in the new structure
+
+```bash
+$ npx strapi2front sync
+
+Found files from previous by-layer structure:
+  types, services, actions
+
+? Remove orphaned by-layer files? Yes
+✔ Removed: types, services, actions
+✔ Generated 25 files
+```
+
+Use `--clean` flag to skip the prompt:
+
+```bash
+npx strapi2front sync --clean
+```
+
+## Import Examples
+
+<Tabs>
+  <TabItem label="By-Feature">
+    ```typescript
+    // Import everything from a content type
+    import {
+      articleService,
+      type Article,
+      articleCreateSchema
+    } from '@/strapi/collections/article';
+
+    // Or import specific items
+    import { articleService } from '@/strapi/collections/article/service';
+    import type { Article } from '@/strapi/collections/article/types';
+    ```
+  </TabItem>
+  <TabItem label="By-Layer">
+    ```typescript
+    // Import from separate directories
+    import type { Article } from '@/strapi/types/article';
+    import { articleService } from '@/strapi/services/article';
+
+    // Or from index files
+    import type { Article } from '@/strapi/types';
+    import { articleService } from '@/strapi/services';
+    ```
+  </TabItem>
+</Tabs>
+
+## Recommendation
+
+We recommend **by-feature** for most projects because:
+
+1. It scales better as your Strapi schema grows
+2. Related code is easier to find
+3. It follows modern architecture patterns
+4. Imports are cleaner and more intuitive

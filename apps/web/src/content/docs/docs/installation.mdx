@@ -1,0 +1,146 @@
+---
+title: Installation
+description: Detailed installation and setup instructions for strapi2front
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+## System Requirements
+
+- **Node.js**: Version 18.0 or higher
+- **Strapi**: Version 4.x or 5.x
+- **Package Manager**: npm, pnpm, yarn, or bun
+
+## Installation
+
+<Tabs>
+  <TabItem label="npm">
+    ```bash
+    npm install -D strapi2front
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```bash
+    pnpm add -D strapi2front
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash
+    yarn add -D strapi2front
+    ```
+  </TabItem>
+  <TabItem label="bun">
+    ```bash
+    bun add -D strapi2front
+    ```
+  </TabItem>
+</Tabs>
+
+## Creating a Configuration File
+
+Run the init command to create a configuration file:
+
+```bash
+npx strapi2front init
+```
+
+This will create a `strapi.config.ts` file with sensible defaults.
+
+<Aside type="tip">
+  The init command will detect your package manager and suggest installing Zod if you enable schema generation.
+</Aside>
+
+## Strapi API Token
+
+strapi2front needs an API token to fetch your schema. Create one in the Strapi admin panel:
+
+1. Go to **Settings** > **API Tokens**
+2. Click **Create new API Token**
+3. Set the token type to **Read-only** or **Full access**
+4. Enable access to **Content-Type Builder** (required for schema fetching)
+
+<Aside type="caution">
+  Never commit your API token to version control. Use environment variables instead.
+</Aside>
+
+## Environment Variables
+
+Create a `.env` file in your project root:
+
+```bash
+STRAPI_URL=http://localhost:1337
+STRAPI_TOKEN=your-api-token-here
+```
+
+Then reference them in your config:
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  url: process.env.STRAPI_URL || "http://localhost:1337",
+  token: process.env.STRAPI_TOKEN,
+  // ... rest of config
+});
+```
+
+## TypeScript vs JavaScript
+
+strapi2front supports both TypeScript and JavaScript projects:
+
+### TypeScript (default)
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  outputFormat: "typescript", // .ts files with type annotations
+  // ...
+});
+```
+
+### JavaScript with JSDoc
+
+```typescript
+import { defineConfig } from "strapi2front";
+
+export default defineConfig({
+  outputFormat: "jsdoc", // .js files with JSDoc comments
+  // ...
+});
+```
+
+## Verifying Installation
+
+Run the sync command to test your setup:
+
+```bash
+npx strapi2front sync
+```
+
+If successful, you'll see output like:
+
+```
+strapi2front sync
+
+✔ Configuration loaded
+✔ Strapi v5
+✔ Schema fetched: 5 collections, 2 singles, 10 components
+✔ Generated 25 files
+
+Types and services are ready to use!
+```
+
+## Troubleshooting
+
+### Connection refused
+
+Make sure your Strapi server is running and the URL is correct.
+
+### 401 Unauthorized
+
+Your API token may be invalid or expired. Generate a new one in Strapi admin.
+
+### Could not find strapi.config
+
+Run `npx strapi2front init` to create the configuration file.
