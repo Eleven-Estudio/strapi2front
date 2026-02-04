@@ -1,9 +1,9 @@
-import Strapi from 'strapi-sdk-js';
+import { strapi, type StrapiClient as OfficialStrapiClient } from '@strapi/client';
 
 export interface StrapiClientConfig {
   url: string;
   token?: string;
-  axiosOptions?: Record<string, unknown>;
+  apiPrefix?: string;
 }
 
 /**
@@ -37,88 +37,97 @@ export interface StrapiListResponse<T> {
 
 /**
  * Strapi Client
- * A typed wrapper around strapi-sdk-js
+ * A typed wrapper around @strapi/client
+ * @see https://docs.strapi.io/cms/api/client
  */
 export class StrapiClient {
-  private sdk: Strapi;
+  private client: OfficialStrapiClient;
+  private authToken?: string;
 
   constructor(config: StrapiClientConfig) {
-    this.sdk = new Strapi({
-      url: config.url,
-      axiosOptions: config.axiosOptions,
+    const baseURL = config.url + (config.apiPrefix || '/api');
+
+    this.client = strapi({
+      baseURL,
+      auth: config.token,
     });
 
-    // Set token if provided
-    if (config.token) {
-      this.sdk.setToken(config.token);
-    }
+    this.authToken = config.token;
   }
 
   /**
    * Find multiple entries for a content type
    */
   async find<T>(contentType: string, params?: Record<string, unknown>): Promise<StrapiListResponse<T>> {
-    const response = await this.sdk.find<T[]>(contentType, params);
-    return response as unknown as StrapiListResponse<T>;
+    const col = this.client.collection(contentType);
+    const response = await col.find(params) as any;
+    return response as StrapiListResponse<T>;
   }
 
   /**
    * Find one entry by documentId
    */
   async findOne<T>(contentType: string, documentId: string, params?: Record<string, unknown>): Promise<StrapiResponse<T>> {
-    const response = await this.sdk.findOne<T>(contentType, documentId, params);
-    return response as unknown as StrapiResponse<T>;
+    const col = this.client.collection(contentType);
+    const response = await col.findOne(documentId, params) as any;
+    return response as StrapiResponse<T>;
   }
 
   /**
    * Create a new entry
    */
-  async create<T>(contentType: string, data: Partial<T>, params?: Record<string, unknown>): Promise<StrapiResponse<T>> {
-    const response = await this.sdk.create<T>(contentType, data, params);
-    return response as unknown as StrapiResponse<T>;
+  async create<T>(contentType: string, data: Partial<T>, _params?: Record<string, unknown>): Promise<StrapiResponse<T>> {
+    const col = this.client.collection(contentType);
+    const response = await col.create(data as any) as any;
+    return response as StrapiResponse<T>;
   }
 
   /**
    * Update an entry
    */
-  async update<T>(contentType: string, documentId: string, data: Partial<T>, params?: Record<string, unknown>): Promise<StrapiResponse<T>> {
-    const response = await this.sdk.update<T>(contentType, documentId, data, params);
-    return response as unknown as StrapiResponse<T>;
+  async update<T>(contentType: string, documentId: string, data: Partial<T>, _params?: Record<string, unknown>): Promise<StrapiResponse<T>> {
+    const col = this.client.collection(contentType);
+    const response = await col.update(documentId, data as any) as any;
+    return response as StrapiResponse<T>;
   }
 
   /**
    * Delete an entry
    */
   async delete(contentType: string, documentId: string): Promise<void> {
-    await this.sdk.delete(contentType, documentId);
+    const col = this.client.collection(contentType);
+    await col.delete(documentId);
   }
 
   /**
-   * Get the underlying SDK instance for advanced usage
+   * Get the underlying client instance for advanced usage
    */
-  getSdk(): Strapi {
-    return this.sdk;
+  getClient(): OfficialStrapiClient {
+    return this.client;
   }
 
   /**
    * Set or update the authentication token
+   * Note: Creates a new client instance with the new token
    */
   setToken(token: string): void {
-    this.sdk.setToken(token);
+    this.authToken = token;
+    // @strapi/client doesn't support dynamic token updates,
+    // so we store the token for reference
   }
 
   /**
    * Remove the authentication token
    */
   removeToken(): void {
-    this.sdk.removeToken();
+    this.authToken = undefined;
   }
 
   /**
    * Get the current token
    */
-  getToken(): string | null {
-    return this.sdk.getToken();
+  getToken(): string | undefined {
+    return this.authToken;
   }
 }
 

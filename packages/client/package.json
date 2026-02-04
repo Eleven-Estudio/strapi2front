@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "strapi-sdk-js": "^3.0.0"
+    "@strapi/client": "^1.6.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

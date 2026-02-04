@@ -111,7 +111,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
     // Install dependencies
     const installDeps = await p.confirm({
-      message: "Install required dependencies (strapi2front, strapi-sdk-js)?",
+      message: "Install required dependencies (strapi2front, @strapi/client)?",
       initialValue: true,
     });
 
@@ -132,20 +132,20 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
         logger.warn(`Please install manually: ${installStrapi2frontCmd}`);
       }
 
-      // Install strapi-sdk-js as regular dependency
-      const installSdkCmd = getInstallCommand(packageManager.name, "strapi-sdk-js");
-      s.start(`Installing strapi-sdk-js... (${pc.dim(installSdkCmd)})`);
+      // Install @strapi/client as regular dependency
+      const installSdkCmd = getInstallCommand(packageManager.name, "@strapi/client");
+      s.start(`Installing @strapi/client... (${pc.dim(installSdkCmd)})`);
       try {
         await execAsync(installSdkCmd, cwd);
-        s.stop(`${pc.green("✓")} strapi-sdk-js installed`);
+        s.stop(`${pc.green("✓")} @strapi/client installed`);
       } catch {
-        s.stop(`${pc.red("✗")} Failed to install strapi-sdk-js`);
+        s.stop(`${pc.red("✗")} Failed to install @strapi/client`);
         logger.warn(`Please install manually: ${installSdkCmd}`);
       }
     } else {
       p.log.info(pc.dim("Remember to install dependencies manually:"));
       p.log.info(pc.dim(`  ${getInstallDevCommand(packageManager.name, "strapi2front")}`));
-      p.log.info(pc.dim(`  ${getInstallCommand(packageManager.name, "strapi-sdk-js")}`));
+      p.log.info(pc.dim(`  ${getInstallCommand(packageManager.name, "@strapi/client")}`));
     }
 
     // Show success message
@@ -216,6 +216,7 @@ export default defineConfig({
     types: true,
     services: ${answers.generateServices},
     actions: ${answers.generateActions},
+    schemas: true, // Zod schemas for form validation (React Hook Form, TanStack Form, etc.)
   },
 
   // Strapi version
@@ -256,6 +257,7 @@ export default defineConfig({
     types: true,
     services: ${answers.generateServices},
     actions: false, // Actions require TypeScript
+    schemas: false, // Zod schemas work best with TypeScript for type inference
   },
 
   // Strapi version
@@ -292,6 +294,7 @@ module.exports = defineConfig({
     types: true,
     services: ${answers.generateServices},
     actions: false, // Actions require TypeScript
+    schemas: false, // Zod schemas work best with TypeScript for type inference
   },
 
   // Strapi version
