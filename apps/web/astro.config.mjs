@@ -8,7 +8,7 @@ import tailwindcss from '@tailwindcss/vite'
 // https://astro.build/config
 export default defineConfig({
   base: '.', // Set a path prefix
-  site: 'https://example.com',
+  site: 'https://strapi2front.elevenestudio.com',
   // Use to generate your sitemap and canonical URLs in your final build.
   integrations: [
     sitemap(),
