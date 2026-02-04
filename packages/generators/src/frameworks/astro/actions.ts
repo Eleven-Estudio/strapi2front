@@ -13,11 +13,14 @@ import type { StrapiVersion } from '../../shared/types.js';
 import { formatCode } from '../../utils/formatter.js';
 import { writeFile, ensureDir } from '../../utils/file.js';
 import { toCamelCase, toKebabCase } from '../../utils/naming.js';
+import { generateZodObjectSchema } from '../../shared/zod-mapper.js';
 
 export interface AstroActionsOptions {
   outputDir: string;
   servicesImportPath: string;
   strapiVersion?: StrapiVersion;
+  /** Use typed Zod schemas instead of generic z.record(z.unknown()) */
+  useTypedSchemas?: boolean;
 }
 
 /**
@@ -41,7 +44,7 @@ export async function generateAstroActions(
   schema: ParsedSchema,
   options: AstroActionsOptions
 ): Promise<string[]> {
-  const { outputDir, servicesImportPath, strapiVersion = "v5" } = options;
+  const { outputDir, servicesImportPath, strapiVersion = "v5", useTypedSchemas = true } = options;
   const generatedFiles: string[] = [];
 
   await ensureDir(outputDir);
@@ -50,7 +53,7 @@ export async function generateAstroActions(
   for (const collection of schema.collections) {
     const fileName = `${toKebabCase(collection.singularName)}.ts`;
     const filePath = path.join(outputDir, fileName);
-    const content = generateCollectionActions(collection, servicesImportPath, strapiVersion);
+    const content = generateCollectionActions(collection, servicesImportPath, strapiVersion, useTypedSchemas);
     await writeFile(filePath, await formatCode(content));
     generatedFiles.push(filePath);
   }
@@ -59,7 +62,7 @@ export async function generateAstroActions(
   for (const single of schema.singles) {
     const fileName = `${toKebabCase(single.singularName)}.ts`;
     const filePath = path.join(outputDir, fileName);
-    const content = generateSingleActions(single, servicesImportPath);
+    const content = generateSingleActions(single, servicesImportPath, useTypedSchemas);
     await writeFile(filePath, await formatCode(content));
     generatedFiles.push(filePath);
   }
@@ -73,7 +76,8 @@ export async function generateAstroActions(
 function generateCollectionActions(
   collection: CollectionType,
   servicesImportPath: string,
-  strapiVersion: StrapiVersion
+  strapiVersion: StrapiVersion,
+  useTypedSchemas: boolean = false
 ): string {
   const serviceName = toCamelCase(collection.singularName) + 'Service';
   const actionsName = toCamelCase(collection.singularName);
@@ -87,6 +91,30 @@ function generateCollectionActions(
 
   // Detect if collection has a slug field
   const hasSlug = 'slug' in collection.attributes;
+
+  // Generate typed schemas if enabled
+  let createDataSchema = 'z.record(z.unknown())';
+  let updateDataSchema = 'z.record(z.unknown())';
+  let schemaDefinitions = '';
+
+  if (useTypedSchemas) {
+    const createResult = generateZodObjectSchema(collection.attributes, { isUpdate: false });
+    const updateResult = generateZodObjectSchema(collection.attributes, { isUpdate: true });
+
+    schemaDefinitions = `
+/**
+ * Create schema for ${collection.displayName}
+ */
+const createSchema = ${createResult.schema};
+
+/**
+ * Update schema for ${collection.displayName}
+ */
+const updateSchema = ${updateResult.schema};
+`;
+    createDataSchema = 'createSchema';
+    updateDataSchema = 'updateSchema';
+  }
 
   return `/**
  * ${collection.displayName} Actions
@@ -107,6 +135,7 @@ const paginationSchema = z.object({
   page: z.number().int().positive().optional().default(1),
   pageSize: z.number().int().positive().max(100).optional().default(25),
 }).optional();
+${schemaDefinitions}
 
 /**
  * ${collection.displayName} actions
@@ -202,7 +231,7 @@ ${hasSlug ? `
    */
   create: defineAction({
     input: z.object({
-      data: z.record(z.unknown()),
+      data: ${createDataSchema},
     }),
     handler: async ({ data }) => {
       try {
@@ -223,7 +252,7 @@ ${hasSlug ? `
   update: defineAction({
     input: z.object({
       ${idParamName}: ${idInputSchema},
-      data: z.record(z.unknown()),
+      data: ${updateDataSchema},
     }),
     handler: async ({ ${idParamName}, data }) => {
       try {
@@ -286,11 +315,28 @@ ${hasSlug ? `
  */
 function generateSingleActions(
   single: SingleType,
-  servicesImportPath: string
+  servicesImportPath: string,
+  useTypedSchemas: boolean = false
 ): string {
   const serviceName = toCamelCase(single.singularName) + 'Service';
   const actionsName = toCamelCase(single.singularName);
   const fileName = toKebabCase(single.singularName);
+
+  // Generate typed schema if enabled
+  let updateDataSchema = 'z.record(z.unknown())';
+  let schemaDefinitions = '';
+
+  if (useTypedSchemas) {
+    const updateResult = generateZodObjectSchema(single.attributes, { isUpdate: true });
+
+    schemaDefinitions = `
+/**
+ * Update schema for ${single.displayName}
+ */
+const updateSchema = ${updateResult.schema};
+`;
+    updateDataSchema = 'updateSchema';
+  }
 
   return `/**
  * ${single.displayName} Actions (Single Type)
@@ -302,7 +348,7 @@ function generateSingleActions(
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
 import { ${serviceName} } from '${servicesImportPath}/${fileName}.service';
-
+${schemaDefinitions}
 /**
  * ${single.displayName} actions
  */
@@ -343,7 +389,7 @@ export const ${actionsName} = {
    */
   update: defineAction({
     input: z.object({
-      data: z.record(z.unknown()),
+      data: ${updateDataSchema},
     }),
     handler: async ({ data }) => {
       try {
