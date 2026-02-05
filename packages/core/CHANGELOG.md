@@ -1,5 +1,11 @@
 # @strapi2front/core
 
+## 0.5.1
+
+### Patch Changes
+
+- chore: add author and contributors metadata to all packages
+
 ## 0.5.0
 
 ### Minor Changes
