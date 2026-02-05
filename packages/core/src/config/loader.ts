@@ -85,8 +85,12 @@ function resolveEnvVariables(config: Record<string, unknown>): Record<string, un
   }
 
   // Also check for token from environment
-  if (!resolved['token'] && process.env['STRAPI_TOKEN']) {
-    resolved['token'] = process.env['STRAPI_TOKEN'];
+  // Priority: STRAPI_SYNC_TOKEN (for sync command) > STRAPI_TOKEN (fallback)
+  if (!resolved['token']) {
+    const syncToken = process.env['STRAPI_SYNC_TOKEN'] || process.env['STRAPI_TOKEN'];
+    if (syncToken) {
+      resolved['token'] = syncToken;
+    }
   }
 
   return resolved;

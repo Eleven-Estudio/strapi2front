@@ -103,7 +103,8 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
     const envPath = path.join(cwd, ".env");
     const envVars: Record<string, string> = {
       STRAPI_URL: answers.strapiUrl,
-      STRAPI_TOKEN: answers.strapiToken,
+      STRAPI_SYNC_TOKEN: answers.strapiToken, // Token for syncing schema (dev only)
+      STRAPI_TOKEN: "", // Token for frontend API calls (production)
     };
 
     // Add upload-specific env vars
@@ -165,7 +166,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
     p.note(
       [
         `${pc.green("✓")} Created ${pc.cyan(configFileName)}`,
-        `${pc.green("✓")} Updated ${pc.cyan(".env")} with Strapi credentials`,
+        `${pc.green("✓")} Updated ${pc.cyan(".env")} with Strapi tokens (STRAPI_SYNC_TOKEN + STRAPI_TOKEN)`,
         `${pc.green("✓")} Created output directory ${pc.cyan(answers.outputDir)}`,
         "",
         `Output format: ${pc.cyan(answers.outputFormat === "jsdoc" ? "JavaScript (JSDoc)" : "TypeScript")}`,
@@ -208,7 +209,8 @@ function generateConfigFile(answers: {
 export default defineConfig({
   // Strapi connection
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
-  token: process.env.STRAPI_TOKEN,
+  // Token for syncing schema (uses STRAPI_SYNC_TOKEN with fallback to STRAPI_TOKEN)
+  token: process.env.STRAPI_SYNC_TOKEN || process.env.STRAPI_TOKEN,
 
   // API prefix (default: "/api")
   apiPrefix: "${answers.apiPrefix}",
@@ -244,7 +246,8 @@ import { defineConfig } from "strapi2front";
 export default defineConfig({
   // Strapi connection
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
-  token: process.env.STRAPI_TOKEN,
+  // Token for syncing schema (uses STRAPI_SYNC_TOKEN with fallback to STRAPI_TOKEN)
+  token: process.env.STRAPI_SYNC_TOKEN || process.env.STRAPI_TOKEN,
 
   // API prefix (default: "/api")
   apiPrefix: "${answers.apiPrefix}",
@@ -282,7 +285,8 @@ const { defineConfig } = require("strapi2front");
 module.exports = defineConfig({
   // Strapi connection
   url: process.env.STRAPI_URL || "${answers.strapiUrl}",
-  token: process.env.STRAPI_TOKEN,
+  // Token for syncing schema (uses STRAPI_SYNC_TOKEN with fallback to STRAPI_TOKEN)
+  token: process.env.STRAPI_SYNC_TOKEN || process.env.STRAPI_TOKEN,
 
   // API prefix (default: "/api")
   apiPrefix: "${answers.apiPrefix}",
@@ -334,8 +338,18 @@ async function appendToEnvFile(
 
   for (const [key, value] of Object.entries(variables)) {
     if (!existingKeys.has(key)) {
-      // Add comment for upload token
-      if (key === "PUBLIC_STRAPI_UPLOAD_TOKEN" && includeUploadComment) {
+      // Add comments for each token type
+      if (key === "STRAPI_SYNC_TOKEN") {
+        newLines.push("");
+        newLines.push("# Sync token: Used by strapi2front to sync schema (development only)");
+        newLines.push("# Permissions: content-type-builder (getContentTypes, getComponents), i18n (listLocales)");
+        newLines.push("# IMPORTANT: Do NOT deploy this token to production");
+      } else if (key === "STRAPI_TOKEN") {
+        newLines.push("");
+        newLines.push("# Frontend token: Used by your app to fetch content (production)");
+        newLines.push("# Configure with only the permissions your app needs");
+      } else if (key === "PUBLIC_STRAPI_UPLOAD_TOKEN" && includeUploadComment) {
+        newLines.push("");
         newLines.push("# Upload token: Create in Strapi Admin > Settings > API Tokens");
         newLines.push("# Set permissions: Upload > upload (only, no delete/update)");
       }

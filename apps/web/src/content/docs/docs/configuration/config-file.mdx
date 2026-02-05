@@ -148,14 +148,25 @@ export default defineConfig({
 
 ## Environment Variables
 
-Recommended `.env` setup for development and sync:
+strapi2front uses two separate tokens for different purposes:
 
 ```bash
 # .env
 STRAPI_URL=http://localhost:1337
-STRAPI_TOKEN=your-sync-api-token-here
+
+# Sync token: Used by strapi2front to sync schema (development only)
+# Permissions: content-type-builder (getContentTypes, getComponents), i18n (listLocales)
+STRAPI_SYNC_TOKEN=your-sync-api-token-here
+
+# Frontend token: Used by your app to fetch content (production)
+# Configure with only the permissions your app needs
+STRAPI_TOKEN=your-frontend-api-token-here
 ```
 
 <Aside type="tip">
-  The `STRAPI_TOKEN` in this config is used for **syncing your schema** during development. For your production frontend, you'll typically create a separate API token with specific permissions for the content your app needs to read/write, configured in your deployment environment.
+  The config file uses `STRAPI_SYNC_TOKEN` with fallback to `STRAPI_TOKEN`. If you only set `STRAPI_TOKEN`, it will work for both sync and frontend — useful when starting out. As you move to production, create a dedicated `STRAPI_SYNC_TOKEN` with sync permissions and limit `STRAPI_TOKEN` to what your frontend needs.
+</Aside>
+
+<Aside type="caution">
+  **Never deploy `STRAPI_SYNC_TOKEN` to production.** It has access to the content-type-builder API, which should only be used during development.
 </Aside>

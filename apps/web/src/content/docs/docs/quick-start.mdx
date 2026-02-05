@@ -60,7 +60,8 @@ This guide will help you set up strapi2front and generate your first types and s
    export default defineConfig({
      // Strapi connection
      url: process.env.STRAPI_URL || "http://localhost:1337",
-     token: process.env.STRAPI_TOKEN,
+     // Uses STRAPI_SYNC_TOKEN for sync, falls back to STRAPI_TOKEN
+     token: process.env.STRAPI_SYNC_TOKEN || process.env.STRAPI_TOKEN,
 
      // API prefix (default: "/api")
      apiPrefix: "/api",

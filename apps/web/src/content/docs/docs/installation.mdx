@@ -50,9 +50,13 @@ This will create a `strapi.config.ts` file with sensible defaults.
   The init command will detect your package manager and suggest installing Zod if you enable schema generation.
 </Aside>
 
-## Strapi API Token
+## Strapi API Tokens
 
-strapi2front needs an API token to fetch your schema. Create one in the Strapi admin panel:
+strapi2front uses **two separate tokens** for different purposes:
+
+### 1. Sync Token (`STRAPI_SYNC_TOKEN`)
+
+Used by the CLI to fetch your schema during development. Create one in the Strapi admin panel:
 
 1. Go to **Settings** > **API Tokens**
 2. Click **Create new API Token**
@@ -75,13 +79,19 @@ strapi2front needs an API token to fetch your schema. Create one in the Strapi a
 |--------|------------|-------------|
 | **I18n** | `listLocales` | Read available locales |
 
-<Aside type="tip">
-  This token is **only for development/sync**. For your production frontend, create a separate token with permissions specific to the content your app needs to read/write.
+<Aside type="caution">
+  **Do NOT deploy `STRAPI_SYNC_TOKEN` to production.** It has access to the content-type-builder API, which should only be used during development.
 </Aside>
 
-<Aside type="caution">
-  Never commit your API token to version control. Use environment variables instead.
-</Aside>
+### 2. Frontend Token (`STRAPI_TOKEN`)
+
+Used by your generated client to fetch content at runtime. Create a separate token with only the permissions your app needs:
+
+1. Go to **Settings** > **API Tokens**
+2. Click **Create new API Token**
+3. Give it a name like "Frontend"
+4. Set the token type to **Custom** or **Read-only** (depending on your needs)
+5. Grant only the permissions your frontend needs (e.g., `find` and `findOne` for your content types)
 
 ## Environment Variables
 
@@ -89,7 +99,14 @@ Create a `.env` file in your project root:
 
 ```bash
 STRAPI_URL=http://localhost:1337
-STRAPI_TOKEN=your-api-token-here
+
+# Sync token: Used by strapi2front to sync schema (development only)
+# Permissions: content-type-builder, i18n
+STRAPI_SYNC_TOKEN=your-sync-token-here
+
+# Frontend token: Used by your app to fetch content (production)
+# Configure with only the permissions your app needs
+STRAPI_TOKEN=your-frontend-token-here
 ```
 
 Then reference them in your config:
@@ -99,10 +116,19 @@ import { defineConfig } from "strapi2front";
 
 export default defineConfig({
   url: process.env.STRAPI_URL || "http://localhost:1337",
-  token: process.env.STRAPI_TOKEN,
+  // Uses STRAPI_SYNC_TOKEN for sync, falls back to STRAPI_TOKEN
+  token: process.env.STRAPI_SYNC_TOKEN || process.env.STRAPI_TOKEN,
   // ... rest of config
 });
 ```
+
+<Aside type="tip">
+  **Getting started?** You can use just `STRAPI_TOKEN` with broad permissions for both sync and frontend. As you move to production, create a dedicated `STRAPI_SYNC_TOKEN` and limit `STRAPI_TOKEN` to what your frontend needs.
+</Aside>
+
+<Aside type="caution">
+  Never commit your API tokens to version control. Use environment variables instead.
+</Aside>
 
 ## TypeScript vs JavaScript
 

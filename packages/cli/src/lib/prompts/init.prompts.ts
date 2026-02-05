@@ -114,8 +114,8 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
   );
 
   const strapiToken = await p.text({
-    message: "What is your Strapi API token?",
-    placeholder: "Press Enter to skip (you can add it later in .env)",
+    message: "What is your Strapi sync token?",
+    placeholder: "Press Enter to skip (you can add it later in .env as STRAPI_SYNC_TOKEN)",
   });
 
   if (p.isCancel(strapiToken)) {
@@ -128,7 +128,7 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
 
   // Show hint if token is empty
   if (trimmedToken === "") {
-    p.log.info(pc.dim("Token skipped. Remember to add STRAPI_TOKEN to your .env file later."));
+    p.log.info(pc.dim("Token skipped. Remember to add STRAPI_SYNC_TOKEN to your .env file later."));
   }
 
   // Strapi version

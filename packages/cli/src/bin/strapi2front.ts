@@ -27,7 +27,7 @@ program
   .description('Initialize strapi2front in your project')
   .option('-y, --yes', 'Skip prompts and use defaults')
   .option('--url <url>', 'Strapi URL')
-  .option('--token <token>', 'Strapi API token')
+  .option('--token <token>', 'Strapi sync token (STRAPI_SYNC_TOKEN)')
   .option('--framework <framework>', 'Framework to use (astro)')
   .action(initCommand);
 
