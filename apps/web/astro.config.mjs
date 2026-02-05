@@ -4,7 +4,8 @@ import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import { defineConfig, fontProviders } from 'astro/config'
 import tailwindcss from '@tailwindcss/vite'
-// import sentry from '@sentry/astro';
+import starlightThemeRapide from 'starlight-theme-rapide'
+
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,8 +13,12 @@ export default defineConfig({
   // Use to generate your sitemap and canonical URLs in your final build.
   integrations: [
     starlight({
+      plugins: [starlightThemeRapide()],
       prerender: true,
       title: 'Strapi2Front',
+      favicon: '/favicon.ico',
+      credits: true,
+      lastUpdated: true,
       description: 'Generate TypeScript types, services, and actions from your Strapi schema',
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/Eleven-Estudio/strapi2front' },
@@ -82,14 +87,7 @@ export default defineConfig({
       ],
     }),
     sitemap(),
-    react(),
-    //   sentry({
-    //   dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
-    //   sourceMapsUploadOptions: {
-    //     project: 'proyecto-ejemplo',
-    //     authToken: process.env.SENTRY_AUTH_TOKEN,
-    //   },
-    // }),
+    react()
   ],
   devToolbar: {
     enabled: false
