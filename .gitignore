@@ -46,3 +46,6 @@ coverage/
 .gitattributes
 AGENTS.md
 **/CLAUDE.md
+
+.beads
+.claude
