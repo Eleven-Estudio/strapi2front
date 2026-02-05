@@ -454,14 +454,47 @@ function generateClient(strapiVersion: "v4" | "v5", apiPrefix: string = "/api"):
 import { strapi as createStrapi } from '@strapi/client';
 import type { StrapiPagination, StrapiMedia, StrapiFileInfo } from './utils';
 
-// Initialize the Strapi client
-const baseURL = (import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337') + '${normalizedPrefix}';
-const authToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+// Default configuration from environment
+const defaultBaseURL = import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337';
+const defaultAuthToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+const apiPrefix = '${normalizedPrefix}';
 
-export const strapiClient = createStrapi({
-  baseURL,
-  auth: authToken,
-});
+/**
+ * Client options for authentication and connection
+ * @beta This API is in beta and may change
+ */
+export interface ClientOptions {
+  /** JWT token or API token for authentication */
+  authToken?: string;
+  /** Base URL of the Strapi instance (without /api prefix) */
+  baseURL?: string;
+}
+
+/**
+ * Create a configured Strapi client instance
+ *
+ * @param options - Optional configuration (authToken, baseURL)
+ * @returns Configured Strapi client
+ *
+ * @example
+ * // Default client (uses STRAPI_URL and STRAPI_TOKEN from env)
+ * const client = createStrapiClient();
+ *
+ * @example
+ * // Client with user JWT token
+ * const userClient = createStrapiClient({ authToken: session.jwt });
+ *
+ * @beta This API is in beta and may change
+ */
+export function createStrapiClient(options?: ClientOptions) {
+  const baseURL = (options?.baseURL || defaultBaseURL) + apiPrefix;
+  const auth = options?.authToken || defaultAuthToken;
+
+  return createStrapi({ baseURL, auth });
+}
+
+// Default client instance (uses environment variables)
+export const strapiClient = createStrapiClient();
 
 // Default pagination for fallback
 const defaultPagination: StrapiPagination = {
@@ -517,9 +550,26 @@ function flattenRelations<T>(data: T): T {
   return data;
 }
 
-// Helper to get typed collection (v4 compatibility wrapper)
-export function collection<T>(pluralName: string) {
-  const col = strapiClient.collection(pluralName);
+/**
+ * Get or create a Strapi client based on options
+ * @internal
+ */
+function getClient(options?: ClientOptions) {
+  if (options?.authToken || options?.baseURL) {
+    return createStrapiClient(options);
+  }
+  return strapiClient;
+}
+
+/**
+ * Helper to get typed collection (v4 compatibility wrapper)
+ *
+ * @param pluralName - The plural name of the collection (e.g., 'articles')
+ * @param clientOptions - Optional client configuration
+ */
+export function collection<T>(pluralName: string, clientOptions?: ClientOptions) {
+  const client = getClient(clientOptions);
+  const col = client.collection(pluralName);
   return {
     async find(params?: Record<string, unknown>): Promise<{ data: T[]; meta: { pagination: StrapiPagination } }> {
       const response = await col.find(params) as any;
@@ -549,9 +599,15 @@ export function collection<T>(pluralName: string) {
   };
 }
 
-// Helper to get typed single type (v4 compatibility wrapper)
-export function single<T>(singularName: string) {
-  const singleType = strapiClient.single(singularName);
+/**
+ * Helper to get typed single type (v4 compatibility wrapper)
+ *
+ * @param singularName - The singular name of the single type (e.g., 'homepage')
+ * @param clientOptions - Optional client configuration
+ */
+export function single<T>(singularName: string, clientOptions?: ClientOptions) {
+  const client = getClient(clientOptions);
+  const singleType = client.single(singularName);
   return {
     async find(params?: Record<string, unknown>): Promise<{ data: T }> {
       const response = await singleType.find(params) as any;
@@ -628,14 +684,54 @@ export const files = {
 import { strapi } from '@strapi/client';
 import type { StrapiPagination, StrapiMedia, StrapiFileInfo } from './utils';
 
-// Initialize the Strapi client
-const baseURL = (import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337') + '${normalizedPrefix}';
-const authToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+// Default configuration from environment
+const defaultBaseURL = import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337';
+const defaultAuthToken = import.meta.env.STRAPI_TOKEN || process.env.STRAPI_TOKEN;
+const apiPrefix = '${normalizedPrefix}';
 
-export const strapiClient = strapi({
-  baseURL,
-  auth: authToken,
-});
+/**
+ * Client options for authentication and connection
+ * @beta This API is in beta and may change
+ */
+export interface ClientOptions {
+  /** JWT token or API token for authentication */
+  authToken?: string;
+  /** Base URL of the Strapi instance (without /api prefix) */
+  baseURL?: string;
+}
+
+/**
+ * Create a configured Strapi client instance
+ *
+ * @param options - Optional configuration (authToken, baseURL)
+ * @returns Configured Strapi client
+ *
+ * @example
+ * // Default client (uses STRAPI_URL and STRAPI_TOKEN from env)
+ * const client = createStrapiClient();
+ *
+ * @example
+ * // Client with user JWT token
+ * const userClient = createStrapiClient({ authToken: session.jwt });
+ *
+ * @example
+ * // Client with custom URL (multi-tenant)
+ * const tenantClient = createStrapiClient({
+ *   baseURL: 'https://tenant.example.com',
+ *   authToken: tenantToken
+ * });
+ *
+ * @beta This API is in beta and may change
+ */
+export function createStrapiClient(options?: ClientOptions) {
+  const baseURL = (options?.baseURL || defaultBaseURL) + apiPrefix;
+  const auth = options?.authToken || defaultAuthToken;
+
+  return strapi({ baseURL, auth });
+}
+
+// Default client instance (uses environment variables)
+export const strapiClient = createStrapiClient();
 
 // Default pagination for fallback
 const defaultPagination: StrapiPagination = {
@@ -646,11 +742,26 @@ const defaultPagination: StrapiPagination = {
 };
 
 /**
+ * Get or create a Strapi client based on options
+ * @internal
+ */
+function getClient(options?: ClientOptions) {
+  if (options?.authToken || options?.baseURL) {
+    return createStrapiClient(options);
+  }
+  return strapiClient;
+}
+
+/**
  * Helper to get typed collection
  * Wraps @strapi/client collection methods with proper typing
+ *
+ * @param pluralName - The plural name of the collection (e.g., 'articles')
+ * @param clientOptions - Optional client configuration
  */
-export function collection<T>(pluralName: string) {
-  const col = strapiClient.collection(pluralName);
+export function collection<T>(pluralName: string, clientOptions?: ClientOptions) {
+  const client = getClient(clientOptions);
+  const col = client.collection(pluralName);
   return {
     async find(params?: Record<string, unknown>): Promise<{ data: T[]; meta: { pagination: StrapiPagination } }> {
       const response = await col.find(params) as any;
@@ -680,9 +791,13 @@ export function collection<T>(pluralName: string) {
 /**
  * Helper to get typed single type
  * Wraps @strapi/client single methods with proper typing
+ *
+ * @param singularName - The singular name of the single type (e.g., 'homepage')
+ * @param clientOptions - Optional client configuration
  */
-export function single<T>(singularName: string) {
-  const singleType = strapiClient.single(singularName);
+export function single<T>(singularName: string, clientOptions?: ClientOptions) {
+  const client = getClient(clientOptions);
+  const singleType = client.single(singularName);
   return {
     async find(params?: Record<string, unknown>): Promise<{ data: T }> {
       const response = await singleType.find(params) as any;
@@ -1123,7 +1238,7 @@ function generateCollectionService(collection: CollectionType, strapiVersion: "v
 
   // Build imports
   const imports = [
-    `import { collection } from '../../shared/client';`,
+    `import { collection, type ClientOptions } from '../../shared/client';`,
     `import type { ${typeName}, ${typeName}Filters } from './types';`,
     `import type { StrapiPagination } from '../../shared/utils';`,
   ];
@@ -1191,28 +1306,6 @@ export interface UpdateOptions {
 }
 ` : '';
 
-  // Create method signature and implementation
-  const createMethod = draftAndPublish
-    ? `  async create(data: Partial<Omit<${typeName}, ${omitFields}>>, options: CreateOptions = {}): Promise<${typeName}> {
-    const response = await ${toCamelCase(collection.singularName)}Collection.create({ ...data, status: options.status });
-    return response.data;
-  },`
-    : `  async create(data: Partial<Omit<${typeName}, ${omitFields}>>): Promise<${typeName}> {
-    const response = await ${toCamelCase(collection.singularName)}Collection.create(data);
-    return response.data;
-  },`;
-
-  // Update method signature and implementation
-  const updateMethod = draftAndPublish
-    ? `  async update(${idParam}, data: Partial<Omit<${typeName}, ${omitFieldsUpdate}>>, options: UpdateOptions = {}): Promise<${typeName}> {
-    const response = await ${toCamelCase(collection.singularName)}Collection.update(${idName}, { ...data, status: options.status });
-    return response.data;
-  },`
-    : `  async update(${idParam}, data: Partial<Omit<${typeName}, ${omitFieldsUpdate}>>): Promise<${typeName}> {
-    const response = await ${toCamelCase(collection.singularName)}Collection.update(${idName}, data);
-    return response.data;
-  },`;
-
   return `/**
  * ${collection.displayName} Service
  * ${collection.description || ''}
@@ -1230,12 +1323,23 @@ export interface FindOneOptions {
 ${findOneOptionsFields}
 }
 ${createOptionsInterface}${updateOptionsInterface}
-// Create typed collection helper
-const ${toCamelCase(collection.singularName)}Collection = collection<${typeName}>('${endpoint}');
+/**
+ * Get a typed collection helper, optionally with custom client options
+ * @internal
+ */
+function getCollection(clientOptions?: ClientOptions) {
+  return collection<${typeName}>('${endpoint}', clientOptions);
+}
 
 export const ${serviceName} = {
-  async findMany(options: FindManyOptions = {}): Promise<{ data: ${typeName}[]; pagination: StrapiPagination }> {
-    const response = await ${toCamelCase(collection.singularName)}Collection.find({
+  /**
+   * Find multiple ${collection.displayName} entries
+   * @param options - Query options (filters, pagination, sort, populate)
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async findMany(options: FindManyOptions = {}, clientOptions?: ClientOptions): Promise<{ data: ${typeName}[]; pagination: StrapiPagination }> {
+    const col = getCollection(clientOptions);
+    const response = await col.find({
 ${findParams}
     });
 
@@ -1245,7 +1349,12 @@ ${findParams}
     };
   },
 
-  async findAll(options: Omit<FindManyOptions, 'pagination'> = {}): Promise<${typeName}[]> {
+  /**
+   * Find all ${collection.displayName} entries (handles pagination automatically)
+   * @param options - Query options (filters, sort, populate)
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async findAll(options: Omit<FindManyOptions, 'pagination'> = {}, clientOptions?: ClientOptions): Promise<${typeName}[]> {
     const allItems: ${typeName}[] = [];
     let page = 1;
     let hasMore = true;
@@ -1254,7 +1363,7 @@ ${findParams}
       const { data, pagination } = await this.findMany({
         ...options,
         pagination: { page, pageSize: 100 },
-      });
+      }, clientOptions);
 
       allItems.push(...data);
       hasMore = page < pagination.pageCount;
@@ -1264,9 +1373,16 @@ ${findParams}
     return allItems;
   },
 
-  async findOne(${idParam}, options: FindOneOptions = {}): Promise<${typeName} | null> {
+  /**
+   * Find a single ${collection.displayName} by ID
+   * @param ${idName} - The ${isV4 ? 'numeric ID' : 'document ID'}
+   * @param options - Query options (populate)
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async findOne(${idParam}, options: FindOneOptions = {}, clientOptions?: ClientOptions): Promise<${typeName} | null> {
     try {
-      const response = await ${toCamelCase(collection.singularName)}Collection.findOne(${idName}, {
+      const col = getCollection(clientOptions);
+      const response = await col.findOne(${idName}, {
 ${findOneParams}
       });
 
@@ -1279,29 +1395,65 @@ ${findOneParams}
     }
   },
 ${hasSlug ? `
-  async findBySlug(slug: string, options: FindOneOptions = {}): Promise<${typeName} | null> {
+  /**
+   * Find a single ${collection.displayName} by slug
+   * @param slug - The slug value
+   * @param options - Query options (populate)
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async findBySlug(slug: string, options: FindOneOptions = {}, clientOptions?: ClientOptions): Promise<${typeName} | null> {
     const { data } = await this.findMany({
       filters: { slug: { $eq: slug } } as ${typeName}Filters,
       pagination: { pageSize: 1 },
       populate: options.populate,${localized ? '\n      locale: options.locale,' : ''}${draftAndPublish ? '\n      status: options.status,' : ''}
-    });
+    }, clientOptions);
 
     return data[0] || null;
   },
 ` : ''}
-${createMethod}
-
-${updateMethod}
-
-  async delete(${idParam}): Promise<void> {
-    await ${toCamelCase(collection.singularName)}Collection.delete(${idName});
+  /**
+   * Create a new ${collection.displayName}
+   * @param data - The data to create
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async create(data: Partial<Omit<${typeName}, ${omitFields}>>${draftAndPublish ? ', options: CreateOptions = {}' : ''}, clientOptions?: ClientOptions): Promise<${typeName}> {
+    const col = getCollection(clientOptions);
+    const response = await col.create(${draftAndPublish ? '{ ...data, status: options.status }' : 'data'});
+    return response.data;
   },
 
-  async count(filters?: ${typeName}Filters): Promise<number> {
+  /**
+   * Update an existing ${collection.displayName}
+   * @param ${idName} - The ${isV4 ? 'numeric ID' : 'document ID'}
+   * @param data - The data to update
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async update(${idParam}, data: Partial<Omit<${typeName}, ${omitFieldsUpdate}>>${draftAndPublish ? ', options: UpdateOptions = {}' : ''}, clientOptions?: ClientOptions): Promise<${typeName}> {
+    const col = getCollection(clientOptions);
+    const response = await col.update(${idName}, ${draftAndPublish ? '{ ...data, status: options.status }' : 'data'});
+    return response.data;
+  },
+
+  /**
+   * Delete a ${collection.displayName}
+   * @param ${idName} - The ${isV4 ? 'numeric ID' : 'document ID'}
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async delete(${idParam}, clientOptions?: ClientOptions): Promise<void> {
+    const col = getCollection(clientOptions);
+    await col.delete(${idName});
+  },
+
+  /**
+   * Count ${collection.displayName} entries
+   * @param filters - Optional filters
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async count(filters?: ${typeName}Filters, clientOptions?: ClientOptions): Promise<number> {
     const { pagination } = await this.findMany({
       filters,
       pagination: { pageSize: 1 },
-    });
+    }, clientOptions);
 
     return pagination.total;
   },
@@ -1327,7 +1479,7 @@ function generateSingleService(single: SingleType, strapiVersion: "v4" | "v5"): 
 
   // Build imports
   const imports = [
-    `import { single } from '../../shared/client';`,
+    `import { single, type ClientOptions } from '../../shared/client';`,
     `import type { ${typeName} } from './types';`,
   ];
   if (localized) {
@@ -1365,13 +1517,24 @@ export interface FindOptions {
 ${findOptionsFields}
 }
 
-// Create typed single helper
-const ${toCamelCase(single.singularName)}Single = single<${typeName}>('${endpoint}');
+/**
+ * Get a typed single helper, optionally with custom client options
+ * @internal
+ */
+function getSingle(clientOptions?: ClientOptions) {
+  return single<${typeName}>('${endpoint}', clientOptions);
+}
 
 export const ${serviceName} = {
-  async find(options: FindOptions = {}): Promise<${typeName} | null> {
+  /**
+   * Find the ${single.displayName} single type
+   * @param options - Query options (populate)
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async find(options: FindOptions = {}, clientOptions?: ClientOptions): Promise<${typeName} | null> {
     try {
-      const response = await ${toCamelCase(single.singularName)}Single.find({
+      const s = getSingle(clientOptions);
+      const response = await s.find({
 ${findParams}
       });
 
@@ -1384,13 +1547,24 @@ ${findParams}
     }
   },
 
-  async update(data: Partial<Omit<${typeName}, ${omitFields}>>): Promise<${typeName}> {
-    const response = await ${toCamelCase(single.singularName)}Single.update(data);
+  /**
+   * Update the ${single.displayName} single type
+   * @param data - The data to update
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async update(data: Partial<Omit<${typeName}, ${omitFields}>>, clientOptions?: ClientOptions): Promise<${typeName}> {
+    const s = getSingle(clientOptions);
+    const response = await s.update(data);
     return response.data;
   },
 
-  async delete(): Promise<void> {
-    await ${toCamelCase(single.singularName)}Single.delete();
+  /**
+   * Delete the ${single.displayName} single type
+   * @param clientOptions - Optional client configuration (authToken, baseURL) - beta
+   */
+  async delete(clientOptions?: ClientOptions): Promise<void> {
+    const s = getSingle(clientOptions);
+    await s.delete();
   },
 };
 `;
