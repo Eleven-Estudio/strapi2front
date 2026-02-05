@@ -115,6 +115,10 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
     await appendToEnvFile(envPath, envVars, answers.generateUpload);
 
+    // Create/update .env.example file
+    const envExamplePath = path.join(cwd, ".env.example");
+    await createEnvExampleFile(envExamplePath, answers.generateUpload);
+
     // Create output directory
     const outputPath = path.join(cwd, answers.outputDir);
     await fs.mkdir(outputPath, { recursive: true });
@@ -166,7 +170,8 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
     p.note(
       [
         `${pc.green("✓")} Created ${pc.cyan(configFileName)}`,
-        `${pc.green("✓")} Updated ${pc.cyan(".env")} with Strapi tokens (STRAPI_SYNC_TOKEN + STRAPI_TOKEN)`,
+        `${pc.green("✓")} Updated ${pc.cyan(".env")} with Strapi tokens`,
+        `${pc.green("✓")} Created ${pc.cyan(".env.example")} for reference`,
         `${pc.green("✓")} Created output directory ${pc.cyan(answers.outputDir)}`,
         "",
         `Output format: ${pc.cyan(answers.outputFormat === "jsdoc" ? "JavaScript (JSDoc)" : "TypeScript")}`,
@@ -362,5 +367,38 @@ async function appendToEnvFile(
     const newContent = content + separator + newLines.join("\n") + "\n";
     await fs.writeFile(envPath, newContent, "utf-8");
   }
+}
+
+async function createEnvExampleFile(
+  envExamplePath: string,
+  includeUpload = false
+): Promise<void> {
+  const lines = [
+    "# Strapi URL",
+    "STRAPI_URL=http://localhost:1337",
+    "",
+    "# Sync token: Used by strapi2front to sync schema (development only)",
+    "# Permissions: content-type-builder (getContentTypes, getComponents), i18n (listLocales)",
+    "# IMPORTANT: Do NOT deploy this token to production",
+    "STRAPI_SYNC_TOKEN=",
+    "",
+    "# Frontend token: Used by your app to fetch content (production)",
+    "# Configure with only the permissions your app needs",
+    "STRAPI_TOKEN=",
+  ];
+
+  if (includeUpload) {
+    lines.push(
+      "",
+      "# Public URL for browser-side uploads",
+      "PUBLIC_STRAPI_URL=http://localhost:1337",
+      "",
+      "# Upload token: Create in Strapi Admin > Settings > API Tokens",
+      "# Set permissions: Upload > upload (only, no delete/update)",
+      "PUBLIC_STRAPI_UPLOAD_TOKEN="
+    );
+  }
+
+  await fs.writeFile(envExamplePath, lines.join("\n") + "\n", "utf-8");
 }
 
