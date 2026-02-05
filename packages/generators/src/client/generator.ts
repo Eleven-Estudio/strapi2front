@@ -73,6 +73,53 @@ export interface StrapiPagination {
   total: number;
 }
 
+// Media types
+export interface StrapiMediaFormat {
+  name: string;
+  hash: string;
+  ext: string;
+  mime: string;
+  width: number;
+  height: number;
+  size: number;
+  url: string;
+}
+
+export interface StrapiMedia {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number;
+  height: number;
+  formats: {
+    thumbnail?: StrapiMediaFormat;
+    small?: StrapiMediaFormat;
+    medium?: StrapiMediaFormat;
+    large?: StrapiMediaFormat;
+  } | null;
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  url: string;
+  previewUrl: string | null;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * File metadata for uploads
+ * @see https://docs.strapi.io/cms/api/client#upload
+ */
+export interface StrapiFileInfo {
+  name?: string;
+  alternativeText?: string;
+  caption?: string;
+}
+
 // Default pagination for fallback
 const defaultPagination: StrapiPagination = {
   page: 1,
@@ -129,6 +176,34 @@ export function single<T>(singularName: string) {
     },
   };
 }
+
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+export const files = {
+  async upload(file: File | Blob, options?: { fileInfo?: StrapiFileInfo }): Promise<StrapiMedia> {
+    const response = await strapiClient.files.upload(file, options) as any;
+    return response;
+  },
+  async find(params?: Record<string, unknown>): Promise<StrapiMedia[]> {
+    const response = await strapiClient.files.find(params) as any;
+    return Array.isArray(response) ? response : [];
+  },
+  async findOne(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.findOne(fileId) as any;
+    return response;
+  },
+  async update(fileId: number, fileInfo: StrapiFileInfo): Promise<StrapiMedia> {
+    const response = await strapiClient.files.update(fileId, fileInfo) as any;
+    return response;
+  },
+  async delete(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.delete(fileId) as any;
+    return response;
+  },
+};
 `;
 }
 
@@ -164,6 +239,52 @@ export interface StrapiPagination {
   pageSize: number;
   pageCount: number;
   total: number;
+}
+
+// Media types
+export interface StrapiMediaFormat {
+  name: string;
+  hash: string;
+  ext: string;
+  mime: string;
+  width: number;
+  height: number;
+  size: number;
+  url: string;
+}
+
+export interface StrapiMedia {
+  id: number;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number;
+  height: number;
+  formats: {
+    thumbnail?: StrapiMediaFormat;
+    small?: StrapiMediaFormat;
+    medium?: StrapiMediaFormat;
+    large?: StrapiMediaFormat;
+  } | null;
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  url: string;
+  previewUrl: string | null;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * File metadata for uploads
+ * @see https://docs.strapi.io/cms/api/client#upload
+ */
+export interface StrapiFileInfo {
+  name?: string;
+  alternativeText?: string;
+  caption?: string;
 }
 
 // Default pagination for fallback
@@ -272,5 +393,33 @@ export function single<T>(singularName: string) {
     },
   };
 }
+
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+export const files = {
+  async upload(file: File | Blob, options?: { fileInfo?: StrapiFileInfo }): Promise<StrapiMedia> {
+    const response = await strapiClient.files.upload(file, options) as any;
+    return response;
+  },
+  async find(params?: Record<string, unknown>): Promise<StrapiMedia[]> {
+    const response = await strapiClient.files.find(params) as any;
+    return Array.isArray(response) ? response : [];
+  },
+  async findOne(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.findOne(fileId) as any;
+    return response;
+  },
+  async update(fileId: number, fileInfo: StrapiFileInfo): Promise<StrapiMedia> {
+    const response = await strapiClient.files.update(fileId, fileInfo) as any;
+    return response;
+  },
+  async delete(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.delete(fileId) as any;
+    return response;
+  },
+};
 `;
 }

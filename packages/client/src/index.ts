@@ -8,4 +8,7 @@ export type {
   StrapiMeta,
   StrapiResponse,
   StrapiListResponse,
+  StrapiMedia,
+  StrapiMediaFormat,
+  StrapiFileInfo,
 } from './client.js';

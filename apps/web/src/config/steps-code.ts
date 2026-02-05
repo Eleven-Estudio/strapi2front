@@ -23,21 +23,17 @@ export const setupOutput = `
   │ src/strapi
   │
   ◇ What would you like to generate?
-  │ Types, Services, Astro Actions
-  │
-  ◇ Detected Configuration
-  │ Framework: Astro v5.16.15
-  │ TypeScript: enabled
-  │ Package Manager: pnpm
+  │ Types, Services, Schemas, Astro Actions
   │
   ◇ Setup complete!
   │ v Created strapi.config.ts
   │ v Updated .env with Strapi credentials
+  │ v Created output directory src/strapi
   │
   │ Next steps:
-  │  1. Run npx strapi2front sync to generate types
-  │  2. Import types from src/strapi/types
-  │  3. Import services from src/strapi/services
+  │  1. Run npx strapi2front sync to generate files
+  │  2. Import from src/strapi/collections/*
+  │  3. Import services from src/strapi/collections/*.service
   │
   └ Happy Coding!`;
 
@@ -51,15 +47,12 @@ export default defineConfig({
   outputFormat: "typescript",
   output: {
     path: "src/strapi",
-    types: "types",
-    services: "services",
-    actions: "actions/strapi",
-    structure: "by-feature"
   },
   features: {
     types: true,
     services: true,
     actions: true,
+    schemas: true,
   },
   strapiVersion: "v5",
 });`;
@@ -83,17 +76,18 @@ export const syncOutput = `
   │    src/strapi/shared/client.ts                │
   │    src/strapi/shared/locales.ts               │
   │    src/strapi/collections/article/types.ts    │
+  │    src/strapi/collections/article/schemas.ts  │
   │    src/strapi/collections/article/service.ts  │
   │    src/strapi/collections/article/actions.ts  │
   │    src/strapi/collections/category/types.ts   │
+  │    src/strapi/collections/category/schemas.ts │
   │    src/strapi/collections/category/service.ts │
-  │    src/strapi/collections/category/actions.ts │
   │    src/strapi/collections/author/types.ts     │
-  │    ... and 8 more                             │
+  │    ... and 10 more                            │
   │                                               │
   ├───────────────────────────────────────────────╯
   │
-  └ Types and services are ready to use!`;
+  └ Types, Services, Schemas, Actions ready to use!`;
 
 export const useCode = `
 ---

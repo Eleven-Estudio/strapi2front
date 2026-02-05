@@ -135,7 +135,7 @@ export default defineConfig({
 | `outputFormat` | `"typescript"` or `"jsdoc"` |
 | `moduleType` | `"esm"` or `"commonjs"` (auto-detected) |
 | `output.path` | Where to generate files |
-| `output.structure` | `"by-feature"` or `"by-layer"` |
+
 
 ### Environment Variables
 

@@ -36,6 +36,58 @@ export interface StrapiListResponse<T> {
 }
 
 /**
+ * Media format (thumbnail, small, medium, large)
+ */
+export interface StrapiMediaFormat {
+  name: string;
+  hash: string;
+  ext: string;
+  mime: string;
+  width: number;
+  height: number;
+  size: number;
+  url: string;
+}
+
+/**
+ * Strapi media file
+ */
+export interface StrapiMedia {
+  id: number;
+  documentId?: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number;
+  height: number;
+  formats: {
+    thumbnail?: StrapiMediaFormat;
+    small?: StrapiMediaFormat;
+    medium?: StrapiMediaFormat;
+    large?: StrapiMediaFormat;
+  } | null;
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  url: string;
+  previewUrl: string | null;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * File metadata for uploads
+ * @see https://docs.strapi.io/cms/api/client#upload
+ */
+export interface StrapiFileInfo {
+  name?: string;
+  alternativeText?: string;
+  caption?: string;
+}
+
+/**
  * Strapi Client
  * A typed wrapper around @strapi/client
  * @see https://docs.strapi.io/cms/api/client
@@ -97,6 +149,56 @@ export class StrapiClient {
   async delete(contentType: string, documentId: string): Promise<void> {
     const col = this.client.collection(contentType);
     await col.delete(documentId);
+  }
+
+  /**
+   * File management methods
+   * @see https://docs.strapi.io/cms/api/client#working-with-files
+   */
+  get files() {
+    const client = this.client;
+    return {
+      /**
+       * Upload a file to Strapi
+       * @see https://docs.strapi.io/cms/api/client#upload
+       */
+      async upload(file: File | Blob, options?: { fileInfo?: StrapiFileInfo }): Promise<StrapiMedia> {
+        const response = await client.files.upload(file, options) as any;
+        return response;
+      },
+
+      /**
+       * Find files with optional filtering and sorting
+       */
+      async find(params?: Record<string, unknown>): Promise<StrapiMedia[]> {
+        const response = await client.files.find(params) as any;
+        return Array.isArray(response) ? response : [];
+      },
+
+      /**
+       * Get a single file by ID
+       */
+      async findOne(fileId: number): Promise<StrapiMedia> {
+        const response = await client.files.findOne(fileId) as any;
+        return response;
+      },
+
+      /**
+       * Update file metadata (name, alternativeText, caption)
+       */
+      async update(fileId: number, fileInfo: StrapiFileInfo): Promise<StrapiMedia> {
+        const response = await client.files.update(fileId, fileInfo) as any;
+        return response;
+      },
+
+      /**
+       * Delete a file by ID
+       */
+      async delete(fileId: number): Promise<StrapiMedia> {
+        const response = await client.files.delete(fileId) as any;
+        return response;
+      },
+    };
   }
 
   /**

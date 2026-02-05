@@ -16,6 +16,7 @@ import type {
   ComponentAttribute,
   DynamicZoneAttribute,
 } from '@strapi2front/core';
+import { getCompactBlocksSchema } from './blocks-schema.js';
 
 /**
  * Options for schema generation
@@ -36,6 +37,12 @@ export interface ZodMapperOptions {
    * @default false - uses simple ID arrays
    */
   useAdvancedRelations?: boolean;
+  /**
+   * Map of component UIDs to their schema variable names
+   * e.g. { 'curse.resource': 'resourceSchema' }
+   * When provided, component fields reference imported schemas instead of z.record(z.unknown())
+   */
+  componentSchemaNames?: Map<string, string>;
 }
 
 /**
@@ -126,8 +133,9 @@ function buildBaseSchema(attr: Attribute, options: ZodMapperOptions): string | n
       return buildPasswordSchema(attr as StringAttribute);
 
     // Blocks (Strapi v5 rich text)
+    // Uses structured schema with all block types: paragraph, heading, list, quote, code, image
     case 'blocks':
-      return 'z.array(z.record(z.unknown()))';
+      return getCompactBlocksSchema();
 
     // Number types
     case 'integer':
@@ -169,16 +177,13 @@ function buildBaseSchema(attr: Attribute, options: ZodMapperOptions): string | n
     case 'relation':
       return buildRelationSchema(attr as RelationAttribute, options);
 
-    // Component - TODO: Implement with component schemas
+    // Component
     case 'component':
-      if (!options.includeComponents) {
-        return buildComponentSchema(attr as ComponentAttribute);
-      }
-      return buildComponentSchema(attr as ComponentAttribute);
+      return buildComponentSchema(attr as ComponentAttribute, options);
 
-    // Dynamic zone - TODO: Implement with component schemas
+    // Dynamic zone
     case 'dynamiczone':
-      return buildDynamicZoneSchema(attr as DynamicZoneAttribute);
+      return buildDynamicZoneSchema(attr as DynamicZoneAttribute, options);
 
     default:
       return 'z.unknown()';
@@ -452,10 +457,20 @@ function buildRelationSchema(attr: RelationAttribute, options: ZodMapperOptions 
 /**
  * Build Zod schema for component attributes
  *
- * TODO: This should reference the component's schema
- * For now, using a generic object schema
+ * When componentSchemaNames is provided, references the imported component schema.
+ * Otherwise falls back to a generic object schema.
  */
-function buildComponentSchema(attr: ComponentAttribute): string {
+function buildComponentSchema(attr: ComponentAttribute, options: ZodMapperOptions = {}): string {
+  const schemaName = options.componentSchemaNames?.get(attr.component);
+
+  if (schemaName) {
+    if (attr.repeatable) {
+      return `z.array(${schemaName})`;
+    }
+    return `${schemaName}.nullable()`;
+  }
+
+  // Fallback when no component schema map is provided
   if (attr.repeatable) {
     return 'z.array(z.record(z.unknown()))';
   }
@@ -465,10 +480,26 @@ function buildComponentSchema(attr: ComponentAttribute): string {
 /**
  * Build Zod schema for dynamic zone attributes
  *
- * TODO: This should be a union of component schemas
- * For now, using a generic array schema
+ * When componentSchemaNames is provided, generates a z.discriminatedUnion
+ * on '__component' with each component schema extended with its literal.
+ * Otherwise falls back to a generic array schema.
  */
-function buildDynamicZoneSchema(_attr: DynamicZoneAttribute): string {
+function buildDynamicZoneSchema(attr: DynamicZoneAttribute, options: ZodMapperOptions = {}): string {
+  if (options.componentSchemaNames && attr.components && attr.components.length > 0) {
+    const members = attr.components
+      .map((uid) => {
+        const schemaName = options.componentSchemaNames!.get(uid);
+        if (!schemaName) return null;
+        return `${schemaName}.extend({ __component: z.literal('${uid}') })`;
+      })
+      .filter(Boolean);
+
+    if (members.length > 0) {
+      return `z.array(\n  z.discriminatedUnion('__component', [\n    ${members.join(',\n    ')},\n  ])\n)`;
+    }
+  }
+
+  // Fallback when no component schema map is provided
   return 'z.array(z.record(z.unknown()))';
 }
 

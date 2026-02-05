@@ -149,7 +149,7 @@ export default defineConfig({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `output.path` | `string` | `"src/strapi"` | Where to generate files |
-| `output.structure` | `"by-feature"` \| `"by-layer"` | `"by-feature"` | Code organization structure |
+
 
 #### Feature Flags
 

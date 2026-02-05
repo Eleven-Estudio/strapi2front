@@ -22,7 +22,6 @@ export default defineConfig({
   // Output configuration
   output: {
     path: "src/strapi",
-    structure: "by-feature",
   },
 
   // Features to generate
@@ -84,20 +83,12 @@ outputFormat: "jsdoc" // generates .js files with JSDoc comments
 
 ### `output`
 
-Configure where and how files are generated.
+Configure where files are generated.
 
 ```typescript
 output: {
   // Base output directory
   path: "src/strapi",
-
-  // Organization structure
-  structure: "by-feature", // or "by-layer"
-
-  // Subdirectories (only for by-layer structure)
-  types: "types",
-  services: "services",
-  actions: "actions/strapi",
 }
 ```
 
