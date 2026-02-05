@@ -15,6 +15,7 @@ features: {
   services: true,   // API service functions
   actions: true,    // Astro actions
   schemas: true,    // Zod validation schemas
+  upload: false,    // File upload helpers
 }
 ```
 
@@ -164,6 +165,71 @@ author: {
 }
 ```
 
+## Upload
+
+Generates file upload helpers for uploading media to Strapi.
+
+```typescript
+features: {
+  upload: true,
+}
+```
+
+**Generated:**
+- `shared/upload-client.ts` - Browser-side upload client (uses public token)
+- `shared/upload-action.ts` - Astro Action for server-side uploads (requires `actions: true`)
+
+### Two Upload Strategies
+
+| Strategy | File | Token | Security | Use Case |
+|----------|------|-------|----------|----------|
+| **Astro Action** | `upload-action.ts` | `STRAPI_TOKEN` (private) | High | Recommended for Astro projects |
+| **Public Client** | `upload-client.ts` | `PUBLIC_STRAPI_UPLOAD_TOKEN` (restricted) | Medium | Any framework, direct browser uploads |
+
+### Astro Action (Recommended)
+
+Server-side upload via Astro Actions. The private `STRAPI_TOKEN` never leaves the server.
+
+```typescript
+// In your component
+import { actions } from 'astro:actions';
+
+const result = await actions.upload({
+  file: myFile,
+  alternativeText: 'My image description'
+});
+```
+
+### Public Upload Client
+
+Direct browser-to-Strapi uploads using a restricted token with **upload-only** permissions.
+
+```typescript
+import { uploadFile } from '@/strapi/shared/upload-client';
+
+const media = await uploadFile(file, {
+  alternativeText: 'Image description'
+});
+```
+
+<Aside type="caution">
+  The `PUBLIC_STRAPI_UPLOAD_TOKEN` should **only** have upload permissions. Never grant delete or update permissions to this token.
+</Aside>
+
+### Environment Variables
+
+When upload is enabled, add these to your `.env`:
+
+```bash
+# For public upload client (browser → Strapi direct)
+PUBLIC_STRAPI_URL=http://localhost:1337
+PUBLIC_STRAPI_UPLOAD_TOKEN=your-restricted-upload-token
+```
+
+Create the upload token in: **Strapi Admin > Settings > API Tokens**
+- Set permissions: **Upload > upload** (only)
+- Do not enable delete or update permissions
+
 ## Selective Generation
 
 Generate only specific features using CLI flags:
@@ -177,6 +243,9 @@ npx strapi2front sync --services-only
 
 # Only actions
 npx strapi2front sync --actions-only
+
+# Only upload helpers
+npx strapi2front sync --upload-only
 ```
 
 ## Recommended Setup

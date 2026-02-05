@@ -8,11 +8,6 @@ import { fetchSchema, detectStrapiVersion } from "@strapi2front/core";
 import { parseSchema } from "@strapi2front/core";
 import type { StrapiVersion } from "@strapi2front/core";
 import type { ParsedSchema, Attribute } from "@strapi2front/core";
-import { generateTypes } from "@strapi2front/generators";
-import { generateServices } from "@strapi2front/generators";
-import { generateActions } from "@strapi2front/generators";
-import { generateClient } from "@strapi2front/generators";
-import { generateLocales } from "@strapi2front/generators";
 import { generateByFeature } from "@strapi2front/generators";
 import { logger } from "../lib/utils/logger.js";
 import { detectModuleType } from "../lib/detectors/module-type.js";
@@ -93,70 +88,13 @@ function installPackage(packageName: string, cwd: string): void {
   execSync(commands[pm], { cwd, stdio: "inherit" });
 }
 
-/**
- * Structure type for output organization
- */
-type OutputStructure = "by-layer" | "by-feature";
-
-/**
- * Get orphaned folders from the opposite structure
- */
-function getOrphanedFolders(outputPath: string, currentStructure: OutputStructure): string[] {
-  const orphanedFolders: string[] = [];
-
-  if (currentStructure === "by-feature") {
-    // If using by-feature, check for by-layer folders
-    const byLayerFolders = ["types", "services", "actions"];
-    for (const folder of byLayerFolders) {
-      const folderPath = path.join(outputPath, folder);
-      if (fs.existsSync(folderPath)) {
-        orphanedFolders.push(folder);
-      }
-    }
-    // Also check for root-level client.ts and locales.ts (by-layer puts them at root)
-    if (fs.existsSync(path.join(outputPath, "client.ts"))) {
-      orphanedFolders.push("client.ts");
-    }
-    if (fs.existsSync(path.join(outputPath, "locales.ts"))) {
-      orphanedFolders.push("locales.ts");
-    }
-  } else {
-    // If using by-layer, check for by-feature folders
-    const byFeatureFolders = ["collections", "singles", "shared", "components"];
-    for (const folder of byFeatureFolders) {
-      const folderPath = path.join(outputPath, folder);
-      if (fs.existsSync(folderPath)) {
-        orphanedFolders.push(folder);
-      }
-    }
-  }
-
-  return orphanedFolders;
-}
-
-/**
- * Remove orphaned folders/files
- */
-function cleanOrphanedFiles(outputPath: string, orphanedItems: string[]): void {
-  for (const item of orphanedItems) {
-    const itemPath = path.join(outputPath, item);
-    if (fs.existsSync(itemPath)) {
-      const stat = fs.statSync(itemPath);
-      if (stat.isDirectory()) {
-        fs.rmSync(itemPath, { recursive: true, force: true });
-      } else {
-        fs.unlinkSync(itemPath);
-      }
-    }
-  }
-}
-
 export interface SyncCommandOptions {
   force?: boolean;
   typesOnly?: boolean;
   servicesOnly?: boolean;
   actionsOnly?: boolean;
-  clean?: boolean;
+  schemasOnly?: boolean;
+  uploadOnly?: boolean;
 }
 
 export async function syncCommand(options: SyncCommandOptions): Promise<void> {
@@ -245,48 +183,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
     const generatedFiles: string[] = [];
 
     // Determine what to generate
-    const generateAll = !options.typesOnly && !options.servicesOnly && !options.actionsOnly;
-
-    // Check structure mode
-    const isByFeature = config.output.structure === 'by-feature';
-    const currentStructure: OutputStructure = isByFeature ? "by-feature" : "by-layer";
-
-    // Check for orphaned files from previous structure
-    if (fs.existsSync(outputPath)) {
-      const orphanedFolders = getOrphanedFolders(outputPath, currentStructure);
-
-      if (orphanedFolders.length > 0) {
-        const otherStructure = isByFeature ? "by-layer" : "by-feature";
-        p.log.warn(
-          pc.yellow(`Found files from previous ${pc.bold(otherStructure)} structure:`)
-        );
-        p.log.message(pc.dim(`  ${orphanedFolders.join(", ")}`));
-
-        let shouldClean = options.clean;
-
-        if (!shouldClean) {
-          const cleanResponse = await p.confirm({
-            message: `Remove orphaned ${otherStructure} files?`,
-            initialValue: true,
-          });
-
-          if (p.isCancel(cleanResponse)) {
-            p.cancel("Sync cancelled");
-            process.exit(0);
-          }
-
-          shouldClean = cleanResponse;
-        }
-
-        if (shouldClean) {
-          s.start("Cleaning orphaned files...");
-          cleanOrphanedFiles(outputPath, orphanedFolders);
-          s.stop(`Removed: ${orphanedFolders.join(", ")}`);
-        } else {
-          p.log.info(pc.dim("Keeping orphaned files. You can clean them manually or use --clean flag."));
-        }
-      }
-    }
+    const generateAll = !options.typesOnly && !options.servicesOnly && !options.actionsOnly && !options.schemasOnly && !options.uploadOnly;
 
     // Get output format from config (default to typescript)
     const outputFormat = config.outputFormat || "typescript";
@@ -304,101 +201,26 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       }
     }
 
-    if (isByFeature) {
-      // Generate using by-feature structure (screaming architecture)
-      s.start(`Generating files (by-feature, ${outputFormat})...`);
-      const files = await generateByFeature(schema, rawSchema.locales, {
-        outputDir: outputPath,
-        features: {
-          types: config.features.types && (generateAll || Boolean(options.typesOnly)),
-          services: config.features.services && (generateAll || Boolean(options.servicesOnly)),
-          actions: config.features.actions && outputFormat === "typescript" && (generateAll || Boolean(options.actionsOnly)),
-          schemas: config.features.schemas,
-        },
-        schemaOptions: config.schemaOptions,
-        blocksRendererInstalled,
-        strapiVersion: config.strapiVersion,
-        apiPrefix: config.apiPrefix,
-        outputFormat,
-        moduleType,
-      });
-      generatedFiles.push(...files);
-      s.stop(`Generated ${files.length} files`);
-    } else {
-      // Generate using by-layer structure (default)
-
-      // Generate types
-      if (generateAll || options.typesOnly) {
-        if (config.features.types) {
-          s.start(`Generating types (${outputFormat})...`);
-          const typesPath = path.join(outputPath, config.output.types);
-          const files = await generateTypes(schema, {
-            outputDir: typesPath,
-            blocksRendererInstalled,
-            strapiVersion: config.strapiVersion,
-            outputFormat,
-          });
-          generatedFiles.push(...files);
-          s.stop(`Generated ${files.length} type files`);
-        }
-      }
-
-      // Generate client (needed by services)
-      if (generateAll || options.servicesOnly) {
-        if (config.features.services) {
-          s.start("Generating client...");
-          const clientFiles = await generateClient({ outputDir: outputPath, strapiVersion: config.strapiVersion, apiPrefix: config.apiPrefix });
-          generatedFiles.push(...clientFiles);
-          s.stop("Generated client");
-
-          // Generate locales (for i18n support)
-          s.start("Generating locales...");
-          const localesFiles = await generateLocales(rawSchema.locales, { outputDir: outputPath });
-          generatedFiles.push(...localesFiles);
-          if (rawSchema.locales.length > 0) {
-            s.stop(`Generated locales: ${rawSchema.locales.map(l => l.code).join(", ")}`);
-          } else {
-            s.stop("Generated locales (i18n not enabled in Strapi)");
-          }
-        }
-      }
-
-      // Generate services
-      if (generateAll || options.servicesOnly) {
-        if (config.features.services) {
-          s.start(`Generating services (${outputFormat})...`);
-          const servicesPath = path.join(outputPath, config.output.services);
-          const typesImportPath = path.relative(servicesPath, path.join(outputPath, config.output.types)).replace(/\\/g, "/") || ".";
-          const files = await generateServices(schema, {
-            outputDir: servicesPath,
-            typesImportPath: typesImportPath.startsWith(".") ? typesImportPath : "./" + typesImportPath,
-            strapiVersion: config.strapiVersion,
-            outputFormat,
-          });
-          generatedFiles.push(...files);
-          s.stop(`Generated ${files.length} service files`);
-        }
-      }
-
-      // Generate actions (only for TypeScript projects)
-      if ((generateAll || options.actionsOnly) && outputFormat === "typescript") {
-        if (config.features.actions) {
-          s.start("Generating Astro actions...");
-          const actionsPath = path.join(outputPath, config.output.actions);
-          const servicesPath = path.join(outputPath, config.output.services);
-
-          const servicesImportPath = path.relative(actionsPath, servicesPath).replace(/\\/g, "/") || ".";
-
-          const files = await generateActions(schema, {
-            outputDir: actionsPath,
-            servicesImportPath: servicesImportPath.startsWith(".") ? servicesImportPath : "./" + servicesImportPath,
-            strapiVersion: config.strapiVersion,
-          });
-          generatedFiles.push(...files);
-          s.stop(`Generated ${files.length} action files`);
-        }
-      }
-    }
+    // Generate using by-feature structure (screaming architecture)
+    s.start(`Generating files (${outputFormat})...`);
+    const files = await generateByFeature(schema, rawSchema.locales, {
+      outputDir: outputPath,
+      features: {
+        types: config.features.types && (generateAll || Boolean(options.typesOnly)),
+        services: config.features.services && (generateAll || Boolean(options.servicesOnly)),
+        actions: config.features.actions && outputFormat === "typescript" && (generateAll || Boolean(options.actionsOnly)),
+        schemas: config.features.schemas && (generateAll || Boolean(options.schemasOnly)),
+        upload: config.features.upload && (generateAll || Boolean(options.uploadOnly)),
+      },
+      schemaOptions: config.schemaOptions,
+      blocksRendererInstalled,
+      strapiVersion: config.strapiVersion,
+      apiPrefix: config.apiPrefix,
+      outputFormat,
+      moduleType,
+    });
+    generatedFiles.push(...files);
+    s.stop(`Generated ${files.length} files`);
 
     // Show summary
     p.note(
@@ -414,7 +236,13 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       "Sync complete!"
     );
 
-    p.outro(pc.green("Types and services are ready to use!"));
+    const generatedFeatures: string[] = [];
+    if (config.features.types) generatedFeatures.push("Types");
+    if (config.features.services) generatedFeatures.push("Services");
+    if (config.features.schemas) generatedFeatures.push("Schemas");
+    if (config.features.actions) generatedFeatures.push("Actions");
+    if (config.features.upload) generatedFeatures.push("Upload");
+    p.outro(pc.green(`${generatedFeatures.join(", ")} ready to use!`));
   } catch (error) {
     s.stop("Sync failed");
 

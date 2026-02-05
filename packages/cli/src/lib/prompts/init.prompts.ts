@@ -17,8 +17,11 @@ export interface InitPromptAnswers {
   apiPrefix: string;
   outputFormat: "typescript" | "jsdoc";
   outputDir: string;
-  generateActions: boolean;
+  generateTypes: boolean;
   generateServices: boolean;
+  generateActions: boolean;
+  generateSchemas: boolean;
+  generateUpload: boolean;
 }
 
 /**
@@ -202,14 +205,29 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     },
   ];
 
+  // Schemas require TypeScript (generated code uses `export type` and `z.infer<typeof>`)
+  if (isTypeScript) {
+    featureOptions.push({
+      value: "schemas",
+      label: "Schemas",
+      hint: "Zod validation schemas for forms (React Hook Form, TanStack Form, etc.)"
+    });
+  }
+
+  featureOptions.push({
+    value: "upload",
+    label: "Upload",
+    hint: "File upload helpers (action + public client for browser uploads)"
+  });
+
   // Only show Astro Actions if available (requires TypeScript)
   if (canGenerateActions && isTypeScript) {
     featureOptions.push({ value: "actions", label: "Astro Actions", hint: "Type-safe actions for client/server" });
   }
 
-  const initialFeatures = (canGenerateActions && isTypeScript)
-    ? ["types", "services", "actions"]
-    : ["types", "services"];
+  const initialFeatures: string[] = ["types", "services"];
+  if (isTypeScript) initialFeatures.push("schemas");
+  if (canGenerateActions && isTypeScript) initialFeatures.push("actions");
 
   const features = await p.multiselect({
     message: "What would you like to generate?",
@@ -223,6 +241,23 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     return null;
   }
 
+  // Validate feature dependencies and auto-enable required features
+  const selectedFeatures = new Set(features as string[]);
+
+  // Dependency chain: types ← services ← actions
+  if (selectedFeatures.has("services") && !selectedFeatures.has("types")) {
+    selectedFeatures.add("types");
+    p.log.info(pc.dim("Auto-enabled Types (required by Services)"));
+  }
+  if (selectedFeatures.has("actions") && !selectedFeatures.has("services")) {
+    selectedFeatures.add("services");
+    p.log.info(pc.dim("Auto-enabled Services (required by Actions)"));
+    if (!selectedFeatures.has("types")) {
+      selectedFeatures.add("types");
+      p.log.info(pc.dim("Auto-enabled Types (required by Services)"));
+    }
+  }
+
   return {
     strapiUrl: strapiUrl,
     strapiToken: trimmedToken,
@@ -230,8 +265,11 @@ export async function runInitPrompts(detection: DetectionResults): Promise<InitP
     apiPrefix: apiPrefix,
     outputFormat: outputFormat,
     outputDir: ((outputDir as string) || "").trim() || "src/strapi",
-    generateActions: canGenerateActions && isTypeScript && (features as string[]).includes("actions"),
-    generateServices: (features as string[]).includes("services"),
+    generateTypes: selectedFeatures.has("types"),
+    generateServices: selectedFeatures.has("services"),
+    generateActions: canGenerateActions && isTypeScript && selectedFeatures.has("actions"),
+    generateSchemas: selectedFeatures.has("schemas"),
+    generateUpload: selectedFeatures.has("upload"),
   };
 }
 

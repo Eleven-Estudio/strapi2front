@@ -34,12 +34,13 @@ program
 // Sync command
 program
   .command('sync')
-  .description('Sync types, services, and actions from Strapi schema')
+  .description('Sync types, schemas, services, actions, and upload helpers from Strapi schema')
   .option('-f, --force', 'Force regeneration of all files')
   .option('--types-only', 'Only generate types')
   .option('--services-only', 'Only generate services')
   .option('--actions-only', 'Only generate actions')
-  .option('--clean', 'Automatically remove orphaned files from previous structure')
+  .option('--schemas-only', 'Only generate Zod validation schemas')
+  .option('--upload-only', 'Only generate upload helpers')
   .action(syncCommand);
 
 // If no command is provided, run init by default

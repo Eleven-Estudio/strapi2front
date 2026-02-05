@@ -66,7 +66,8 @@ npx strapi2front sync
 | `--types-only` | Only generate type definitions |
 | `--services-only` | Only generate service functions |
 | `--actions-only` | Only generate Astro actions |
-| `--clean` | Auto-clean orphaned files without prompting |
+| `--schemas-only` | Only generate Zod validation schemas |
+| `--upload-only` | Only generate upload helpers |
 | `--force`, `-f` | Force regeneration even if no changes |
 
 **Examples:**
@@ -81,8 +82,8 @@ npx strapi2front sync --types-only
 # Only regenerate services
 npx strapi2front sync --services-only
 
-# Clean orphaned files automatically
-npx strapi2front sync --clean
+# Only regenerate schemas
+npx strapi2front sync --schemas-only
 ```
 
 ### `version`
@@ -165,7 +166,3 @@ Run `npx strapi2front init` to create the configuration file.
 - Your API token may be invalid or expired
 - Generate a new token in Strapi admin
 - Ensure the token has access to Content-Type Builder
-
-### "Structure mismatch warning"
-
-This appears when switching between `by-feature` and `by-layer` structures. Use `--clean` to remove old files automatically.

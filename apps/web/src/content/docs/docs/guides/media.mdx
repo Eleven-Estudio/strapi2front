@@ -110,9 +110,104 @@ function ResponsiveImage({ media }: { media: StrapiMedia }) {
 
 ## Uploading Files
 
-Strapi's Upload API uses multipart form data. Here's how to upload files:
+strapi2front provides two approaches for uploading files to Strapi. Enable the upload feature to generate helpers:
 
-### Upload Function
+```typescript
+features: {
+  upload: true,
+}
+```
+
+### Approach 1: Astro Action (Recommended)
+
+Server-side upload using Astro Actions. The private `STRAPI_TOKEN` stays on the server.
+
+<Aside type="tip">
+  This is the most secure approach. The API token is never exposed to the browser.
+</Aside>
+
+First, register the actions in `src/actions/index.ts`:
+
+```typescript
+import { uploadAction, uploadMultipleAction } from '../strapi/shared/upload-action';
+
+export const server = {
+  upload: uploadAction,
+  uploadMultiple: uploadMultipleAction,
+};
+```
+
+Then use in your components:
+
+```tsx
+import { actions } from 'astro:actions';
+
+// Single file upload
+const handleUpload = async (file: File) => {
+  const result = await actions.upload({
+    file,
+    alternativeText: 'My image description',
+  });
+  console.log('Uploaded:', result.data);
+};
+
+// Multiple files
+const handleMultipleUpload = async (files: File[]) => {
+  const result = await actions.uploadMultiple({
+    files,
+    alternativeText: 'Gallery images',
+  });
+  console.log('Uploaded:', result.data);
+};
+```
+
+### Approach 2: Public Upload Client
+
+Direct browser-to-Strapi uploads using a **restricted public token**.
+
+<Aside type="caution">
+  Only use this when you can't use Astro Actions (e.g., non-Astro frameworks). The token must be restricted to upload-only permissions.
+</Aside>
+
+**Setup:**
+
+1. Create a restricted token in **Strapi Admin > Settings > API Tokens**
+2. Set permissions: **Upload > upload** only (no delete, no update)
+3. Add to `.env`:
+
+```bash
+PUBLIC_STRAPI_URL=http://localhost:1337
+PUBLIC_STRAPI_UPLOAD_TOKEN=your-restricted-upload-token
+```
+
+**Usage:**
+
+```typescript
+import { uploadFile, uploadFiles } from '@/strapi/shared/upload-client';
+
+// Single file
+const media = await uploadFile(file, {
+  alternativeText: 'Image description',
+});
+
+// Multiple files
+const mediaArray = await uploadFiles(files, {
+  caption: 'Gallery images',
+});
+```
+
+### Security Comparison
+
+| Aspect | Astro Action | Public Client |
+|--------|--------------|---------------|
+| Token exposure | Never (server-side) | Visible in browser |
+| Token permissions | Full access | Upload only |
+| Delete/update files | Yes | No |
+| Works without backend | No | Yes |
+
+### Manual Upload (Custom Implementation)
+
+If you need custom upload logic:
 
 ```typescript
 async function uploadFile(file: File): Promise<number> {
@@ -132,74 +227,57 @@ async function uploadFile(file: File): Promise<number> {
   }
 
   const [uploadedFile] = await response.json();
-  return uploadedFile.id; // Return the file ID
-}
-```
-
-### Upload with Metadata
-
-```typescript
-async function uploadFileWithInfo(
-  file: File,
-  info: { name?: string; caption?: string; alternativeText?: string }
-): Promise<number> {
-  const formData = new FormData();
-  formData.append("files", file);
-  formData.append("fileInfo", JSON.stringify(info));
-
-  const response = await fetch(`${STRAPI_URL}/api/upload`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${STRAPI_TOKEN}`,
-    },
-    body: formData,
-  });
-
-  const [uploadedFile] = await response.json();
   return uploadedFile.id;
 }
 ```
 
 ## Associating Media with Content
 
-Media fields use numeric IDs (not documentIds):
+Media fields use numeric IDs (not documentIds). After uploading, use the returned `id` to associate media with content:
 
 <Tabs>
-  <TabItem label="Create with Media">
+  <TabItem label="With Upload Client">
     ```typescript
-    // First upload the file
-    const fileId = await uploadFile(coverImage);
+    import { uploadFile } from '@/strapi/shared/upload-client';
+    import { articleService } from '@/strapi/collections/article';
 
-    // Then create content with the file ID
+    // Upload and get the media object
+    const media = await uploadFile(coverImage);
+
+    // Create content with the file ID
     await articleService.create({
       title: "Article with Cover",
       content: "...",
-      cover: fileId, // Numeric ID
+      cover: media.id, // Numeric ID from upload response
     });
     ```
   </TabItem>
-  <TabItem label="Update Media">
+  <TabItem label="With Astro Action">
     ```typescript
-    // Upload new file
-    const newFileId = await uploadFile(newCover);
+    import { actions } from 'astro:actions';
+    import { articleService } from '@/strapi/collections/article';
 
-    // Update the content
-    await articleService.update("abc123", {
-      cover: newFileId,
-    });
+    // Upload via action
+    const result = await actions.upload({ file: coverImage });
 
-    // Remove media (set to null)
-    await articleService.update("abc123", {
-      cover: null,
+    // Create content with the file ID
+    await articleService.create({
+      title: "Article with Cover",
+      content: "...",
+      cover: result.data.id,
     });
     ```
   </TabItem>
   <TabItem label="Multiple Media">
     ```typescript
+    import { uploadFiles } from '@/strapi/shared/upload-client';
+    import { articleService } from '@/strapi/collections/article';
+
     // Upload multiple files
-    const fileIds = await Promise.all(
-      files.map(file => uploadFile(file))
-    );
+    const mediaArray = await uploadFiles(galleryFiles);
+
+    // Extract IDs
+    const fileIds = mediaArray.map(m => m.id);
 
     // Set gallery
     await articleService.create({
@@ -209,6 +287,25 @@ Media fields use numeric IDs (not documentIds):
     ```
   </TabItem>
 </Tabs>
+
+### Updating Media
+
+```typescript
+import { uploadFile } from '@/strapi/shared/upload-client';
+
+// Upload new file
+const newMedia = await uploadFile(newCover);
+
+// Update the content
+await articleService.update("abc123", {
+  cover: newMedia.id,
+});
+
+// Remove media (set to null)
+await articleService.update("abc123", {
+  cover: null,
+});
+```
 
 ## Schema Validation
 
@@ -226,12 +323,14 @@ export const articleCreateSchema = z.object({
 
 ## Form Integration
 
-Example form with file upload:
+Example form with file upload using React Hook Form:
 
 ```tsx
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { articleCreateSchema } from "@/strapi/collections/article";
+import { articleCreateSchema, articleService } from "@/strapi/collections/article";
+import { uploadFile } from "@/strapi/shared/upload-client";
 
 function CreateArticleForm() {
   const [uploading, setUploading] = useState(false);
@@ -245,8 +344,10 @@ function CreateArticleForm() {
 
     setUploading(true);
     try {
-      const fileId = await uploadFile(file);
-      form.setValue("cover", fileId);
+      const media = await uploadFile(file, {
+        alternativeText: file.name,
+      });
+      form.setValue("cover", media.id);
     } finally {
       setUploading(false);
     }
@@ -278,6 +379,10 @@ function CreateArticleForm() {
   );
 }
 ```
+
+<Aside type="tip">
+  For Astro projects, consider using the `uploadAction` in your form's server action for better security.
+</Aside>
 
 ## Image URLs
 

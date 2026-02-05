@@ -20,14 +20,9 @@ export const configSchema = z.object({
   // Module type: 'esm' for ES Modules, 'commonjs' for CommonJS (auto-detected if not specified)
   moduleType: z.enum(["esm", "commonjs"]).optional(),
 
-  // Output paths
+  // Output path
   output: z.object({
     path: z.string().default("src/strapi"),
-    types: z.string().default("types"),
-    services: z.string().default("services"),
-    actions: z.string().optional().default("actions/strapi"),
-    // Output structure: 'by-layer' (types/, services/, actions/) or 'by-feature' (article/, category/)
-    structure: z.enum(["by-layer", "by-feature"]).default("by-feature"),
   }).default({}),
 
   // Features to generate
@@ -38,6 +33,8 @@ export const configSchema = z.object({
     // Zod schemas for validation (React Hook Form, TanStack Form, etc.)
     // Default: true for TypeScript, false for JSDoc
     schemas: z.boolean().optional(),
+    // Upload helpers (public client + Astro action)
+    upload: z.boolean().default(false),
   }).default({}),
 
   // Schema generation options

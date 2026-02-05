@@ -10,7 +10,7 @@ import type {
 import { formatCode } from '../utils/formatter.js';
 import { writeFile, ensureDir } from '../utils/file.js';
 import { toPascalCase, toCamelCase, toKebabCase } from '../utils/naming.js';
-import { generateZodObjectSchema } from '../shared/zod-mapper.js';
+import { generateZodObjectSchema, type ZodMapperOptions } from '../shared/zod-mapper.js';
 
 export interface ByFeatureGeneratorOptions {
   outputDir: string;
@@ -24,6 +24,11 @@ export interface ByFeatureGeneratorOptions {
      * @default true for TypeScript, false for JSDoc
      */
     schemas?: boolean;
+    /**
+     * Generate upload helpers (upload-client + upload-action)
+     * @default false
+     */
+    upload?: boolean;
   };
   /**
    * Schema generation options
@@ -58,17 +63,21 @@ export interface ByFeatureGeneratorOptions {
  *   collections/
  *     article/
  *       types.ts
+ *       schemas.ts
  *       service.ts
  *       actions.ts
  *   singles/
  *     homepage/
  *       types.ts
+ *       schemas.ts
  *       service.ts
  *   components/
  *     seo.ts
  *   shared/
  *     utils.ts
  *     client.ts
+ *     upload-client.ts   (when features.upload)
+ *     upload-action.ts   (when features.upload + actions + TypeScript)
  *     locales.ts
  */
 export async function generateByFeature(
@@ -134,6 +143,25 @@ export async function generateByFeature(
   await writeFile(localesPath, await formatCode(localesContent));
   generatedFiles.push(localesPath);
 
+  // Upload helpers
+  if (features.upload) {
+    // Upload client (always generated when upload is enabled)
+    const uploadClientPath = path.join(sharedDir, `upload-client.${ext}`);
+    const uploadClientContent = outputFormat === "jsdoc"
+      ? generateUploadClientJSDoc(useESM)
+      : generateUploadClientTS();
+    await writeFile(uploadClientPath, await formatCode(uploadClientContent));
+    generatedFiles.push(uploadClientPath);
+
+    // Upload action (only if actions enabled + TypeScript)
+    if (features.actions && outputFormat === "typescript") {
+      const uploadActionPath = path.join(sharedDir, 'upload-action.ts');
+      const uploadActionContent = generateUploadActionTS();
+      await writeFile(uploadActionPath, await formatCode(uploadActionContent));
+      generatedFiles.push(uploadActionPath);
+    }
+  }
+
   // Generate collection files
   for (const collection of schema.collections) {
     const featureDir = path.join(outputDir, 'collections', toKebabCase(collection.singularName));
@@ -151,7 +179,7 @@ export async function generateByFeature(
     // Generate schemas.ts for validation (React Hook Form, TanStack Form, etc.)
     if (generateSchemas) {
       const schemasPath = path.join(featureDir, `schemas.${ext}`);
-      const schemasContent = generateCollectionSchemas(collection, strapiVersion, advancedRelations);
+      const schemasContent = generateCollectionSchemas(collection, schema, strapiVersion, advancedRelations);
       await writeFile(schemasPath, await formatCode(schemasContent));
       generatedFiles.push(schemasPath);
     }
@@ -194,7 +222,7 @@ export async function generateByFeature(
     // Generate schemas.ts for single types too
     if (generateSchemas) {
       const schemasPath = path.join(featureDir, `schemas.${ext}`);
-      const schemasContent = generateSingleSchemas(single, strapiVersion, advancedRelations);
+      const schemasContent = generateSingleSchemas(single, schema, strapiVersion, advancedRelations);
       await writeFile(schemasPath, await formatCode(schemasContent));
       generatedFiles.push(schemasPath);
     }
@@ -214,7 +242,7 @@ export async function generateByFeature(
     const componentPath = path.join(outputDir, 'components', `${toKebabCase(component.name)}.${ext}`);
     const content = outputFormat === "jsdoc"
       ? generateComponentTypesJSDoc(component, schema, useESM)
-      : generateComponentTypes(component, schema);
+      : generateComponentTypes(component, schema, generateSchemas, strapiVersion, advancedRelations);
     await writeFile(componentPath, await formatCode(content));
     generatedFiles.push(componentPath);
   }
@@ -236,12 +264,12 @@ function generateUtilityTypes(blocksRendererInstalled: boolean, strapiVersion: "
  */
 export type RichTextContent = string;`
     : blocksRendererInstalled
-    ? `/**
+      ? `/**
  * Blocks content type (Strapi v5 rich text)
  * Re-exported from @strapi/blocks-react-renderer
  */
 export type { BlocksContent } from '@strapi/blocks-react-renderer';`
-    : `/**
+      : `/**
  * Blocks content type (Strapi v5 rich text)
  *
  * For full type support and rendering, install:
@@ -370,6 +398,16 @@ export interface StrapiMediaFormat {
   url: string;
 }
 
+/**
+ * File metadata for uploads
+ * @see https://docs.strapi.io/cms/api/client#upload
+ */
+export interface StrapiFileInfo {
+  name?: string;
+  alternativeText?: string;
+  caption?: string;
+}
+
 export interface StrapiPagination {
   page: number;
   pageSize: number;
@@ -414,7 +452,7 @@ function generateClient(strapiVersion: "v4" | "v5", apiPrefix: string = "/api"):
  */
 
 import { strapi as createStrapi } from '@strapi/client';
-import type { StrapiPagination } from './utils';
+import type { StrapiPagination, StrapiMedia, StrapiFileInfo } from './utils';
 
 // Initialize the Strapi client
 const baseURL = (import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337') + '${normalizedPrefix}';
@@ -528,6 +566,54 @@ export function single<T>(singularName: string) {
     },
   };
 }
+
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+export const files = {
+  /**
+   * Upload a file to Strapi
+   * @see https://docs.strapi.io/cms/api/client#upload
+   */
+  async upload(file: File | Blob, options?: { fileInfo?: StrapiFileInfo }): Promise<StrapiMedia> {
+    const response = await strapiClient.files.upload(file, options) as any;
+    return response;
+  },
+
+  /**
+   * Find files with optional filtering and sorting
+   */
+  async find(params?: Record<string, unknown>): Promise<StrapiMedia[]> {
+    const response = await strapiClient.files.find(params) as any;
+    return Array.isArray(response) ? response : [];
+  },
+
+  /**
+   * Get a single file by ID
+   */
+  async findOne(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.findOne(fileId) as any;
+    return response;
+  },
+
+  /**
+   * Update file metadata (name, alternativeText, caption)
+   */
+  async update(fileId: number, fileInfo: StrapiFileInfo): Promise<StrapiMedia> {
+    const response = await strapiClient.files.update(fileId, fileInfo) as any;
+    return response;
+  },
+
+  /**
+   * Delete a file by ID
+   */
+  async delete(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.delete(fileId) as any;
+    return response;
+  },
+};
 `;
   }
 
@@ -540,7 +626,7 @@ export function single<T>(singularName: string) {
  */
 
 import { strapi } from '@strapi/client';
-import type { StrapiPagination } from './utils';
+import type { StrapiPagination, StrapiMedia, StrapiFileInfo } from './utils';
 
 // Initialize the Strapi client
 const baseURL = (import.meta.env.STRAPI_URL || process.env.STRAPI_URL || 'http://localhost:1337') + '${normalizedPrefix}';
@@ -611,6 +697,75 @@ export function single<T>(singularName: string) {
     },
   };
 }
+
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+export const files = {
+  /**
+   * Upload a file to Strapi
+   *
+   * @example
+   * // Browser: upload from file input
+   * const file = fileInput.files[0];
+   * const uploaded = await files.upload(file, {
+   *   fileInfo: { alternativeText: 'My image', caption: 'A caption' }
+   * });
+   *
+   * @example
+   * // Use the returned ID to link to an entry
+   * await collection('articles').create({
+   *   title: 'My article',
+   *   cover: uploaded.id,
+   * });
+   *
+   * @see https://docs.strapi.io/cms/api/client#upload
+   */
+  async upload(file: File | Blob, options?: { fileInfo?: StrapiFileInfo }): Promise<StrapiMedia> {
+    const response = await strapiClient.files.upload(file, options) as any;
+    return response;
+  },
+
+  /**
+   * Find files with optional filtering and sorting
+   *
+   * @example
+   * const images = await files.find({
+   *   filters: { mime: { $contains: 'image' } },
+   *   sort: ['name:asc'],
+   * });
+   */
+  async find(params?: Record<string, unknown>): Promise<StrapiMedia[]> {
+    const response = await strapiClient.files.find(params) as any;
+    return Array.isArray(response) ? response : [];
+  },
+
+  /**
+   * Get a single file by ID
+   */
+  async findOne(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.findOne(fileId) as any;
+    return response;
+  },
+
+  /**
+   * Update file metadata (name, alternativeText, caption)
+   */
+  async update(fileId: number, fileInfo: StrapiFileInfo): Promise<StrapiMedia> {
+    const response = await strapiClient.files.update(fileId, fileInfo) as any;
+    return response;
+  },
+
+  /**
+   * Delete a file by ID
+   */
+  async delete(fileId: number): Promise<StrapiMedia> {
+    const response = await strapiClient.files.delete(fileId) as any;
+    return response;
+  },
+};
 `;
 }
 
@@ -718,12 +873,19 @@ ${attributes}
 `;
 }
 
-function generateComponentTypes(component: ComponentType, schema: ParsedSchema): string {
+function generateComponentTypes(
+  component: ComponentType,
+  schema: ParsedSchema,
+  includeSchemas: boolean = false,
+  strapiVersion: "v4" | "v5" = "v5",
+  advancedRelations: boolean = false
+): string {
   const typeName = toPascalCase(component.name);
+  const schemaName = toCamelCase(component.name);
   const attributes = generateAttributes(component.attributes);
   const imports = generateTypeImports(component.attributes, schema, 'component');
 
-  return `/**
+  let content = `/**
  * ${component.displayName} component
  * Category: ${component.category}
  * ${component.description || ''}
@@ -737,6 +899,36 @@ export interface ${typeName} {
 ${attributes}
 }
 `;
+
+  // Add Zod schema if enabled
+  if (includeSchemas) {
+    const componentSchemaNames = buildComponentSchemaNames(component.attributes, schema);
+    const schemaImports = generateSchemaImports(component.attributes, schema, 'component');
+    const schemaOptions: ZodMapperOptions = {
+      isUpdate: false,
+      strapiVersion,
+      useAdvancedRelations: advancedRelations,
+      componentSchemaNames,
+    };
+    const schemaResult = generateZodObjectSchema(component.attributes, schemaOptions);
+
+    content += `
+import { z } from 'zod';
+${schemaImports}
+/**
+ * Zod schema for ${component.displayName} component
+ * Use this for validating component data in forms
+ */
+export const ${schemaName}Schema = ${schemaResult.schema};
+
+/**
+ * Inferred type from schema
+ */
+export type ${typeName}Input = z.infer<typeof ${schemaName}Schema>;
+`;
+  }
+
+  return content;
 }
 
 function generateTypeImports(
@@ -1209,18 +1401,119 @@ ${findParams}
 // ============================================
 
 /**
+ * Build a Map of component UIDs → schema variable names
+ * by scanning attributes for component and dynamiczone types.
+ */
+function buildComponentSchemaNames(
+  attributes: Record<string, Attribute>,
+  schema: ParsedSchema
+): Map<string, string> {
+  const map = new Map<string, string>();
+
+  for (const attr of Object.values(attributes)) {
+    if (attr.type === 'component' && 'component' in attr && attr.component) {
+      const uid = attr.component;
+      if (!map.has(uid)) {
+        const componentName = uid.split('.').pop() || '';
+        // Verify component exists in schema
+        const exists = schema.components.some((c) => c.name === componentName);
+        if (exists && componentName) {
+          map.set(uid, `${toCamelCase(componentName)}Schema`);
+        }
+      }
+    }
+
+    if (attr.type === 'dynamiczone' && 'components' in attr && attr.components) {
+      for (const uid of attr.components) {
+        if (!map.has(uid)) {
+          const componentName = uid.split('.').pop() || '';
+          const exists = schema.components.some((c) => c.name === componentName);
+          if (exists && componentName) {
+            map.set(uid, `${toCamelCase(componentName)}Schema`);
+          }
+        }
+      }
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Generate import statements for component schemas referenced in attributes.
+ * Returns a string with import lines (including trailing newline) or empty string.
+ */
+function generateSchemaImports(
+  attributes: Record<string, Attribute>,
+  schema: ParsedSchema,
+  context: 'collection' | 'single' | 'component'
+): string {
+  const imports = new Map<string, string>(); // schemaVarName → import path
+
+  const relativePrefix = context === 'component' ? '.' : '../../components';
+
+  for (const attr of Object.values(attributes)) {
+    if (attr.type === 'component' && 'component' in attr && attr.component) {
+      addComponentImport(attr.component, imports, schema, relativePrefix);
+    }
+
+    if (attr.type === 'dynamiczone' && 'components' in attr && attr.components) {
+      for (const uid of attr.components) {
+        addComponentImport(uid, imports, schema, relativePrefix);
+      }
+    }
+  }
+
+  if (imports.size === 0) return '';
+
+  const lines: string[] = [];
+  for (const [schemaVarName, importPath] of imports) {
+    lines.push(`import { ${schemaVarName} } from '${importPath}';`);
+  }
+  return lines.join('\n') + '\n';
+}
+
+function addComponentImport(
+  uid: string,
+  imports: Map<string, string>,
+  schema: ParsedSchema,
+  relativePrefix: string
+): void {
+  const componentName = uid.split('.').pop() || '';
+  if (!componentName) return;
+
+  const exists = schema.components.some((c) => c.name === componentName);
+  if (!exists) return;
+
+  const schemaVarName = `${toCamelCase(componentName)}Schema`;
+  if (imports.has(schemaVarName)) return;
+
+  const fileName = toKebabCase(componentName);
+  imports.set(schemaVarName, `${relativePrefix}/${fileName}`);
+}
+
+/**
  * Generate Zod schemas for a collection type
  * These schemas can be reused with React Hook Form, TanStack Form, etc.
  */
 function generateCollectionSchemas(
   collection: CollectionType,
+  schema: ParsedSchema,
   strapiVersion: "v4" | "v5" = "v5",
   advancedRelations: boolean = false
 ): string {
   const name = toCamelCase(collection.singularName);
   const pascalName = toPascalCase(collection.singularName);
 
-  const schemaOptions = { isUpdate: false, strapiVersion, useAdvancedRelations: advancedRelations };
+  const componentSchemaNames = buildComponentSchemaNames(collection.attributes, schema);
+  const schemaImports = generateSchemaImports(collection.attributes, schema, 'collection');
+
+  const schemaOptions: ZodMapperOptions = {
+    isUpdate: false,
+    strapiVersion,
+    useAdvancedRelations: advancedRelations,
+    componentSchemaNames,
+  };
   const createResult = generateZodObjectSchema(collection.attributes, schemaOptions);
   const updateResult = generateZodObjectSchema(collection.attributes, { ...schemaOptions, isUpdate: true });
 
@@ -1236,7 +1529,7 @@ function generateCollectionSchemas(
  */
 
 import { z } from 'zod';
-
+${schemaImports}
 /**
  * Schema for creating a new ${collection.displayName}
  */
@@ -1262,16 +1555,21 @@ export type ${pascalName}UpdateInput = z.infer<typeof ${name}UpdateSchema>;
  */
 function generateSingleSchemas(
   single: SingleType,
+  schema: ParsedSchema,
   strapiVersion: "v4" | "v5" = "v5",
   advancedRelations: boolean = false
 ): string {
   const name = toCamelCase(single.singularName);
   const pascalName = toPascalCase(single.singularName);
 
+  const componentSchemaNames = buildComponentSchemaNames(single.attributes, schema);
+  const schemaImports = generateSchemaImports(single.attributes, schema, 'single');
+
   const updateResult = generateZodObjectSchema(single.attributes, {
     isUpdate: true,
     strapiVersion,
     useAdvancedRelations: advancedRelations,
+    componentSchemaNames,
   });
 
   return `/**
@@ -1286,7 +1584,7 @@ function generateSingleSchemas(
  */
 
 import { z } from 'zod';
-
+${schemaImports}
 /**
  * Schema for updating ${single.displayName}
  * All fields are optional for partial updates
@@ -1426,8 +1724,8 @@ function generateUtilityTypesJSDoc(blocksRendererInstalled: boolean, strapiVersi
  * @typedef {string} RichTextContent
  */`
     : blocksRendererInstalled
-    ? `// BlocksContent - import from '@strapi/blocks-react-renderer' for full type support`
-    : `/**
+      ? `// BlocksContent - import from '@strapi/blocks-react-renderer' for full type support`
+      : `/**
  * Blocks content type (Strapi v5 rich text)
  *
  * For full type support and rendering, install:
@@ -1573,6 +1871,15 @@ ${mediaType}
  * @property {number} height
  * @property {number} size
  * @property {string} url
+ */
+
+/**
+ * File metadata for uploads
+ * @see https://docs.strapi.io/cms/api/client#upload
+ * @typedef {Object} StrapiFileInfo
+ * @property {string} [name]
+ * @property {string} [alternativeText]
+ * @property {string} [caption]
  */
 
 /**
@@ -1821,7 +2128,72 @@ function single(singularName) {
   };
 }
 
-${useESM ? 'export { strapiClient, collection, single };' : 'module.exports = { strapiClient, collection, single };'}
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+const files = {
+  /**
+   * Upload a file to Strapi
+   * @param {File|Blob} file
+   * @param {{ fileInfo?: import('./utils').StrapiFileInfo }} [options]
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   * @see https://docs.strapi.io/cms/api/client#upload
+   */
+  async upload(file, options) {
+    /** @type {any} */
+    const response = await strapiClient.files.upload(file, options);
+    return response;
+  },
+
+  /**
+   * Find files with optional filtering and sorting
+   * @param {Record<string, unknown>} [params]
+   * @returns {Promise<import('./utils').StrapiMedia[]>}
+   */
+  async find(params) {
+    /** @type {any} */
+    const response = await strapiClient.files.find(params);
+    return Array.isArray(response) ? response : [];
+  },
+
+  /**
+   * Get a single file by ID
+   * @param {number} fileId
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async findOne(fileId) {
+    /** @type {any} */
+    const response = await strapiClient.files.findOne(fileId);
+    return response;
+  },
+
+  /**
+   * Update file metadata (name, alternativeText, caption)
+   * @param {number} fileId
+   * @param {import('./utils').StrapiFileInfo} fileInfo
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async update(fileId, fileInfo) {
+    /** @type {any} */
+    const response = await strapiClient.files.update(fileId, fileInfo);
+    return response;
+  },
+
+  /**
+   * Delete a file by ID
+   * @param {number} fileId
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async delete(fileId) {
+    /** @type {any} */
+    const response = await strapiClient.files.delete(fileId);
+    return response;
+  },
+};
+
+${useESM ? 'export { strapiClient, collection, single, files };' : 'module.exports = { strapiClient, collection, single, files };'}
 `;
   }
 
@@ -1973,7 +2345,72 @@ function single(singularName) {
   };
 }
 
-${useESM ? 'export { strapiClient, collection, single };' : 'module.exports = { strapiClient, collection, single };'}
+/**
+ * File management helpers
+ * Wraps @strapi/client file methods with proper typing
+ * @see https://docs.strapi.io/cms/api/client#working-with-files
+ */
+const files = {
+  /**
+   * Upload a file to Strapi
+   * @param {File|Blob} file
+   * @param {{ fileInfo?: import('./utils').StrapiFileInfo }} [options]
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   * @see https://docs.strapi.io/cms/api/client#upload
+   */
+  async upload(file, options) {
+    /** @type {any} */
+    const response = await strapiClient.files.upload(file, options);
+    return response;
+  },
+
+  /**
+   * Find files with optional filtering and sorting
+   * @param {Record<string, unknown>} [params]
+   * @returns {Promise<import('./utils').StrapiMedia[]>}
+   */
+  async find(params) {
+    /** @type {any} */
+    const response = await strapiClient.files.find(params);
+    return Array.isArray(response) ? response : [];
+  },
+
+  /**
+   * Get a single file by ID
+   * @param {number} fileId
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async findOne(fileId) {
+    /** @type {any} */
+    const response = await strapiClient.files.findOne(fileId);
+    return response;
+  },
+
+  /**
+   * Update file metadata (name, alternativeText, caption)
+   * @param {number} fileId
+   * @param {import('./utils').StrapiFileInfo} fileInfo
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async update(fileId, fileInfo) {
+    /** @type {any} */
+    const response = await strapiClient.files.update(fileId, fileInfo);
+    return response;
+  },
+
+  /**
+   * Delete a file by ID
+   * @param {number} fileId
+   * @returns {Promise<import('./utils').StrapiMedia>}
+   */
+  async delete(fileId) {
+    /** @type {any} */
+    const response = await strapiClient.files.delete(fileId);
+    return response;
+  },
+};
+
+${useESM ? 'export { strapiClient, collection, single, files };' : 'module.exports = { strapiClient, collection, single, files };'}
 `;
 }
 
@@ -2503,5 +2940,265 @@ const ${serviceName} = {
 };
 
 ${useESM ? `export { ${serviceName} };` : `module.exports = { ${serviceName} };`}
+`;
+}
+
+// ============================================
+// Upload Helpers Generation
+// ============================================
+
+function generateUploadClientTS(): string {
+  return `/**
+ * Public Upload Client
+ * Generated by strapi2front
+ *
+ * Uploads files directly from the browser to Strapi using a restricted public token.
+ * This token should ONLY have upload permissions (no delete, no update).
+ *
+ * Required environment variables:
+ *   PUBLIC_STRAPI_URL - Your Strapi CMS base URL
+ *   PUBLIC_STRAPI_UPLOAD_TOKEN - Restricted API token (upload-only)
+ *
+ * Create the token in: Strapi Admin > Settings > API Tokens
+ * Set permissions: Upload > upload (only)
+ */
+
+import type { StrapiMedia, StrapiFileInfo } from './utils';
+
+const STRAPI_URL = import.meta.env.PUBLIC_STRAPI_URL || '';
+const UPLOAD_TOKEN = import.meta.env.PUBLIC_STRAPI_UPLOAD_TOKEN || '';
+
+/**
+ * Upload a single file to Strapi from the browser
+ */
+export async function uploadFile(
+  file: File,
+  fileInfo?: StrapiFileInfo
+): Promise<StrapiMedia> {
+  const formData = new FormData();
+  formData.append('files', file);
+
+  if (fileInfo) {
+    formData.append('fileInfo', JSON.stringify(fileInfo));
+  }
+
+  const response = await fetch(\`\${STRAPI_URL}/api/upload\`, {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${UPLOAD_TOKEN}\`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(\`Upload failed: \${response.status} \${response.statusText}\`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/**
+ * Upload multiple files to Strapi from the browser
+ */
+export async function uploadFiles(
+  files: File[],
+  fileInfo?: StrapiFileInfo
+): Promise<StrapiMedia[]> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append('files', f));
+
+  if (fileInfo) {
+    formData.append('fileInfo', JSON.stringify(fileInfo));
+  }
+
+  const response = await fetch(\`\${STRAPI_URL}/api/upload\`, {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${UPLOAD_TOKEN}\`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(\`Upload failed: \${response.status} \${response.statusText}\`);
+  }
+
+  return response.json();
+}
+`;
+}
+
+function generateUploadClientJSDoc(useESM: boolean): string {
+  return `/**
+ * Public Upload Client
+ * Generated by strapi2front
+ *
+ * Uploads files directly from the browser to Strapi using a restricted public token.
+ * This token should ONLY have upload permissions (no delete, no update).
+ *
+ * Required environment variables:
+ *   PUBLIC_STRAPI_URL - Your Strapi CMS base URL
+ *   PUBLIC_STRAPI_UPLOAD_TOKEN - Restricted API token (upload-only)
+ *
+ * Create the token in: Strapi Admin > Settings > API Tokens
+ * Set permissions: Upload > upload (only)
+ */
+
+/** @typedef {import('./utils').StrapiMedia} StrapiMedia */
+/** @typedef {import('./utils').StrapiFileInfo} StrapiFileInfo */
+
+const STRAPI_URL = ${useESM ? "import.meta.env.PUBLIC_STRAPI_URL || ''" : "process.env.PUBLIC_STRAPI_URL || ''"};
+const UPLOAD_TOKEN = ${useESM ? "import.meta.env.PUBLIC_STRAPI_UPLOAD_TOKEN || ''" : "process.env.PUBLIC_STRAPI_UPLOAD_TOKEN || ''"};
+
+/**
+ * Upload a single file to Strapi from the browser
+ * @param {File} file - The file to upload
+ * @param {StrapiFileInfo} [fileInfo] - Optional file metadata
+ * @returns {Promise<StrapiMedia>}
+ */
+${useESM ? "export " : ""}async function uploadFile(file, fileInfo) {
+  const formData = new FormData();
+  formData.append('files', file);
+
+  if (fileInfo) {
+    formData.append('fileInfo', JSON.stringify(fileInfo));
+  }
+
+  const response = await fetch(\`\${STRAPI_URL}/api/upload\`, {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${UPLOAD_TOKEN}\`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(\`Upload failed: \${response.status} \${response.statusText}\`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/**
+ * Upload multiple files to Strapi from the browser
+ * @param {File[]} files - The files to upload
+ * @param {StrapiFileInfo} [fileInfo] - Optional file metadata (applied to all)
+ * @returns {Promise<StrapiMedia[]>}
+ */
+${useESM ? "export " : ""}async function uploadFiles(files, fileInfo) {
+  const formData = new FormData();
+  files.forEach((f) => formData.append('files', f));
+
+  if (fileInfo) {
+    formData.append('fileInfo', JSON.stringify(fileInfo));
+  }
+
+  const response = await fetch(\`\${STRAPI_URL}/api/upload\`, {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${UPLOAD_TOKEN}\`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(\`Upload failed: \${response.status} \${response.statusText}\`);
+  }
+
+  return response.json();
+}
+
+${useESM ? "" : "module.exports = { uploadFile, uploadFiles };"}
+`;
+}
+
+function generateUploadActionTS(): string {
+  return `/**
+ * Upload Action
+ * Generated by strapi2front
+ *
+ * Astro Action that receives files via FormData and uploads them to Strapi server-side.
+ * Uses the private STRAPI_TOKEN — never exposed to the browser.
+ *
+ * Usage:
+ *   import { actions } from 'astro:actions';
+ *   const result = await actions.upload({ file: myFile, alternativeText: 'My image' });
+ *
+ * Register this action in src/actions/index.ts:
+ *   import { uploadAction, uploadMultipleAction } from '../strapi/shared/upload-action';
+ *   export const server = { upload: uploadAction, uploadMultiple: uploadMultipleAction };
+ */
+
+import { defineAction, ActionError } from 'astro:actions';
+import { z } from 'astro:schema';
+import { files } from './client';
+
+/**
+ * Upload a single file via Astro Action (server-side, secure)
+ */
+export const uploadAction = defineAction({
+  accept: 'form',
+  input: z.object({
+    file: z.instanceof(File),
+    name: z.string().optional(),
+    alternativeText: z.string().optional(),
+    caption: z.string().optional(),
+  }),
+  handler: async (input) => {
+    try {
+      const { file, name, alternativeText, caption } = input;
+
+      const fileInfo: Record<string, string> = {};
+      if (name) fileInfo.name = name;
+      if (alternativeText) fileInfo.alternativeText = alternativeText;
+      if (caption) fileInfo.caption = caption;
+
+      const result = await files.upload(file, {
+        fileInfo: Object.keys(fileInfo).length > 0 ? fileInfo : undefined,
+      });
+
+      return result;
+    } catch (error) {
+      throw new ActionError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error instanceof Error ? error.message : 'Upload failed',
+      });
+    }
+  },
+});
+
+/**
+ * Upload multiple files via Astro Action (server-side, secure)
+ */
+export const uploadMultipleAction = defineAction({
+  accept: 'form',
+  input: z.object({
+    files: z.array(z.instanceof(File)).min(1),
+    alternativeText: z.string().optional(),
+    caption: z.string().optional(),
+  }),
+  handler: async (input) => {
+    try {
+      const results = await Promise.all(
+        input.files.map((file) =>
+          files.upload(file, {
+            fileInfo: {
+              ...(input.alternativeText && { alternativeText: input.alternativeText }),
+              ...(input.caption && { caption: input.caption }),
+            },
+          })
+        )
+      );
+      return results;
+    } catch (error) {
+      throw new ActionError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error instanceof Error ? error.message : 'Upload failed',
+      });
+    }
+  },
+});
 `;
 }

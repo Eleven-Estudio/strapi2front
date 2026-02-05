@@ -113,15 +113,11 @@ moduleType: "esm"
 
 **Type:** `object`
 
-Configure where and how files are generated.
+Configure where files are generated.
 
 ```typescript
 output: {
   path: "src/strapi",
-  structure: "by-feature",
-  types: "types",
-  services: "services",
-  actions: "actions/strapi",
 }
 ```
 
@@ -131,36 +127,6 @@ output: {
 **Default:** `"src/strapi"`
 
 Base output directory for generated files.
-
-#### `output.structure`
-
-**Type:** `"by-feature" | "by-layer"`
-**Default:** `"by-layer"`
-
-Organization structure:
-- `by-feature`: Groups files by content type (recommended)
-- `by-layer`: Groups files by type (types/, services/, etc.)
-
-#### `output.types`
-
-**Type:** `string`
-**Default:** `"types"`
-
-Subdirectory for types (only used with `by-layer` structure).
-
-#### `output.services`
-
-**Type:** `string`
-**Default:** `"services"`
-
-Subdirectory for services (only used with `by-layer` structure).
-
-#### `output.actions`
-
-**Type:** `string`
-**Default:** `"actions/strapi"`
-
-Subdirectory for Astro actions (only used with `by-layer` structure).
 
 ---
 
@@ -176,6 +142,7 @@ features: {
   services: true,
   actions: true,
   schemas: true,
+  upload: false,
 }
 ```
 
@@ -206,6 +173,21 @@ Generate Astro actions. Only works with `outputFormat: "typescript"`.
 **Default:** `false`
 
 Generate Zod validation schemas.
+
+#### `features.upload`
+
+**Type:** `boolean`
+**Default:** `false`
+
+Generate upload helpers for file uploads to Strapi:
+- `shared/upload-client.ts` - Browser upload client (public token)
+- `shared/upload-action.ts` - Astro Action for secure server-side uploads
+
+Requires additional environment variables:
+```bash
+PUBLIC_STRAPI_URL=http://localhost:1337
+PUBLIC_STRAPI_UPLOAD_TOKEN=your-restricted-token
+```
 
 ---
 
@@ -268,7 +250,6 @@ export default defineConfig({
   // File organization
   output: {
     path: "src/strapi",
-    structure: "by-feature",
   },
 
   // Features

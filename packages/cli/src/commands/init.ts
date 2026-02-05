@@ -89,8 +89,11 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
       apiPrefix: answers.apiPrefix,
       outputFormat: answers.outputFormat,
       outputDir: answers.outputDir,
-      generateActions: answers.generateActions,
+      generateTypes: answers.generateTypes,
       generateServices: answers.generateServices,
+      generateActions: answers.generateActions,
+      generateSchemas: answers.generateSchemas,
+      generateUpload: answers.generateUpload,
       moduleType,
     });
     const configPath = path.join(cwd, `strapi.config.${configExtension}`);
@@ -98,10 +101,18 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
 
     // Update .env file
     const envPath = path.join(cwd, ".env");
-    await appendToEnvFile(envPath, {
+    const envVars: Record<string, string> = {
       STRAPI_URL: answers.strapiUrl,
       STRAPI_TOKEN: answers.strapiToken,
-    });
+    };
+
+    // Add upload-specific env vars
+    if (answers.generateUpload) {
+      envVars.PUBLIC_STRAPI_URL = answers.strapiUrl;
+      envVars.PUBLIC_STRAPI_UPLOAD_TOKEN = "";
+    }
+
+    await appendToEnvFile(envPath, envVars, answers.generateUpload);
 
     // Create output directory
     const outputPath = path.join(cwd, answers.outputDir);
@@ -181,8 +192,11 @@ function generateConfigFile(answers: {
   apiPrefix: string;
   outputFormat: "typescript" | "jsdoc";
   outputDir: string;
-  generateActions: boolean;
+  generateTypes: boolean;
   generateServices: boolean;
+  generateActions: boolean;
+  generateSchemas: boolean;
+  generateUpload: boolean;
   moduleType: "esm" | "commonjs";
 }): string {
   const isTypeScript = answers.outputFormat === "typescript";
@@ -205,18 +219,15 @@ export default defineConfig({
   // Output configuration
   output: {
     path: "${answers.outputDir}",
-    types: "types",
-    services: "services",
-    actions: "actions/strapi",
-    structure: 'by-feature' // or 'by-layer'
   },
 
   // Features to generate
   features: {
-    types: true,
+    types: ${answers.generateTypes},
     services: ${answers.generateServices},
     actions: ${answers.generateActions},
-    schemas: true, // Zod schemas for form validation (React Hook Form, TanStack Form, etc.)
+    schemas: ${answers.generateSchemas}, // Zod schemas for form validation (React Hook Form, TanStack Form, etc.)
+    upload: ${answers.generateUpload}, // File upload helpers (action + public client)
   },
 
   // Strapi version
@@ -247,17 +258,15 @@ export default defineConfig({
   // Output configuration
   output: {
     path: "${answers.outputDir}",
-    types: "types",
-    services: "services",
-    structure: 'by-feature' // or 'by-layer'
   },
 
   // Features to generate
   features: {
-    types: true,
+    types: ${answers.generateTypes},
     services: ${answers.generateServices},
     actions: false, // Actions require TypeScript
-    schemas: false, // Zod schemas work best with TypeScript for type inference
+    schemas: ${answers.generateSchemas},
+    upload: ${answers.generateUpload},
   },
 
   // Strapi version
@@ -284,17 +293,15 @@ module.exports = defineConfig({
   // Output configuration
   output: {
     path: "${answers.outputDir}",
-    types: "types",
-    services: "services",
-    structure: 'by-feature' // or 'by-layer'
   },
 
   // Features to generate
   features: {
-    types: true,
+    types: ${answers.generateTypes},
     services: ${answers.generateServices},
     actions: false, // Actions require TypeScript
-    schemas: false, // Zod schemas work best with TypeScript for type inference
+    schemas: ${answers.generateSchemas},
+    upload: ${answers.generateUpload},
   },
 
   // Strapi version
@@ -305,7 +312,8 @@ module.exports = defineConfig({
 
 async function appendToEnvFile(
   envPath: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  includeUploadComment = false
 ): Promise<void> {
   let content = "";
 
@@ -326,6 +334,11 @@ async function appendToEnvFile(
 
   for (const [key, value] of Object.entries(variables)) {
     if (!existingKeys.has(key)) {
+      // Add comment for upload token
+      if (key === "PUBLIC_STRAPI_UPLOAD_TOKEN" && includeUploadComment) {
+        newLines.push("# Upload token: Create in Strapi Admin > Settings > API Tokens");
+        newLines.push("# Set permissions: Upload > upload (only, no delete/update)");
+      }
       newLines.push(`${key}=${value}`);
     }
   }
