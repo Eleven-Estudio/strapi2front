@@ -38,3 +38,11 @@ coverage/
 
 # Ignore docs at root only (not apps/web/src/content/docs)
 /docs
+
+# AI/Agent tools
+.beads/
+.claude/
+.perles/
+.gitattributes
+AGENTS.md
+**/CLAUDE.md
