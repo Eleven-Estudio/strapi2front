@@ -148,18 +148,14 @@ export default defineConfig({
 
 ## Environment Variables
 
-Recommended `.env` setup:
+Recommended `.env` setup for development and sync:
 
 ```bash
 # .env
 STRAPI_URL=http://localhost:1337
-STRAPI_TOKEN=your-api-token-here
+STRAPI_TOKEN=your-sync-api-token-here
 ```
 
-For production:
-
-```bash
-# .env.production
-STRAPI_URL=https://api.yoursite.com
-STRAPI_TOKEN=production-token-here
-```
+<Aside type="tip">
+  The `STRAPI_TOKEN` in this config is used for **syncing your schema** during development. For your production frontend, you'll typically create a separate API token with specific permissions for the content your app needs to read/write, configured in your deployment environment.
+</Aside>

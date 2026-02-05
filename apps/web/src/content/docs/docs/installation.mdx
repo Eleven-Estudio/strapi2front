@@ -56,8 +56,28 @@ strapi2front needs an API token to fetch your schema. Create one in the Strapi a
 
 1. Go to **Settings** > **API Tokens**
 2. Click **Create new API Token**
-3. Set the token type to **Read-only** or **Full access**
-4. Enable access to **Content-Type Builder** (required for schema fetching)
+3. Give it a name like "strapi2front sync"
+4. Set the token type to **Custom**
+5. Configure the following permissions:
+
+**Required permissions:**
+
+| Plugin | Permission | Description |
+|--------|------------|-------------|
+| **Content-type-builder** | `getComponents` | Read component schemas |
+| **Content-type-builder** | `getComponent` | Read individual component |
+| **Content-type-builder** | `getContentTypes` | Read content type schemas |
+| **Content-type-builder** | `getContentType` | Read individual content type |
+
+**Optional permissions (if using i18n):**
+
+| Plugin | Permission | Description |
+|--------|------------|-------------|
+| **I18n** | `listLocales` | Read available locales |
+
+<Aside type="tip">
+  This token is **only for development/sync**. For your production frontend, create a separate token with permissions specific to the content your app needs to read/write.
+</Aside>
 
 <Aside type="caution">
   Never commit your API token to version control. Use environment variables instead.
@@ -118,17 +138,36 @@ Run the sync command to test your setup:
 npx strapi2front sync
 ```
 
-If successful, you'll see output like:
+If successful, you'll see output similar to:
 
 ```
-strapi2front sync
-
-✔ Configuration loaded
-✔ Strapi v5
-✔ Schema fetched: 5 collections, 2 singles, 10 components
-✔ Generated 25 files
-
-Types and services are ready to use!
+◇  strapi2front sync
+│
+◇  Configuration loaded
+│
+◇  Strapi v5
+│
+◇  Schema fetched: 3 collections, 1 singles, 5 components
+│
+◇  Generated 18 files
+│
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Generated 18 files in src/strapi                           │
+│                                                             │
+│  Files generated:                                           │
+│    src/strapi/shared/utils.ts                               │
+│    src/strapi/shared/client.ts                              │
+│    src/strapi/shared/locales.ts                             │
+│    src/strapi/collections/article/types.ts                  │
+│    src/strapi/collections/article/schemas.ts                │
+│    src/strapi/collections/article/service.ts                │
+│    src/strapi/collections/article/actions.ts                │
+│    ... and 11 more                                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+│
+└  Types, Services, Schemas, Actions ready to use!
 ```
 
 ## Troubleshooting

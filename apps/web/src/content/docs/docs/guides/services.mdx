@@ -13,31 +13,32 @@ Each content type gets a service with these methods:
 
 ```typescript
 export const articleService = {
-  find,     // List all with filters
-  findOne,  // Get by documentId
-  create,   // Create new entry
-  update,   // Update existing entry
-  delete,   // Delete entry
+  findMany,  // List with filters, returns { data, pagination }
+  findAll,   // Fetch ALL entries (handles pagination automatically)
+  findOne,   // Get by documentId
+  create,    // Create new entry
+  update,    // Update existing entry
+  delete,    // Delete entry
 };
 ```
 
-## Find (List)
+## findMany (Paginated List)
 
-Retrieve multiple entries with optional filters, pagination, and sorting.
+Retrieve multiple entries with optional filters, pagination, and sorting. Returns paginated response with `data` and `pagination` metadata.
 
 ```typescript
-import { articleService } from "@/strapi/collections/article";
+import { articleService } from "@/strapi/collections/article/service";
 
-// Get all articles
-const articles = await articleService.find();
+// Get first page of articles
+const { data: articles, pagination } = await articleService.findMany();
 
 // With pagination
-const page1 = await articleService.find({
+const { data: page1, pagination } = await articleService.findMany({
   pagination: { page: 1, pageSize: 10 },
 });
 
 // With filters
-const published = await articleService.find({
+const { data: published } = await articleService.findMany({
   filters: {
     publishedAt: { $notNull: true },
     title: { $contains: "TypeScript" },
@@ -45,17 +46,17 @@ const published = await articleService.find({
 });
 
 // With sorting
-const latest = await articleService.find({
+const { data: latest } = await articleService.findMany({
   sort: ["publishedAt:desc", "title:asc"],
 });
 
 // With relations (populate)
-const withAuthor = await articleService.find({
+const { data: withAuthor } = await articleService.findMany({
   populate: ["author", "categories"],
 });
 
 // Complex populate
-const detailed = await articleService.find({
+const { data: detailed } = await articleService.findMany({
   populate: {
     author: { fields: ["name", "email"] },
     categories: { populate: ["icon"] },
@@ -63,11 +64,36 @@ const detailed = await articleService.find({
 });
 ```
 
-## Find One
+## findAll (All Entries)
+
+Fetch ALL entries automatically handling pagination. Useful when you need every item.
+
+```typescript
+// Get ALL articles (handles pagination internally)
+const allArticles = await articleService.findAll();
+
+// With filters - gets all matching items
+const allPublished = await articleService.findAll({
+  filters: { publishedAt: { $notNull: true } },
+});
+
+// With relations
+const allWithAuthors = await articleService.findAll({
+  populate: ["author"],
+});
+```
+
+<Aside type="caution">
+  Use `findAll()` carefully with large datasets. It makes multiple API requests to fetch all pages.
+</Aside>
+
+## findOne
 
 Get a single entry by its documentId.
 
 ```typescript
+import { articleService } from "@/strapi/collections/article/service";
+
 // Get by documentId
 const article = await articleService.findOne("abc123xyz");
 
@@ -82,11 +108,13 @@ const article = await articleService.findOne("abc123xyz", {
 });
 ```
 
-## Create
+## create
 
 Create a new entry.
 
 ```typescript
+import { articleService } from "@/strapi/collections/article/service";
+
 const newArticle = await articleService.create({
   title: "My New Article",
   slug: "my-new-article",
@@ -108,11 +136,13 @@ const draft = await articleService.create(
 );
 ```
 
-## Update
+## update
 
 Update an existing entry.
 
 ```typescript
+import { articleService } from "@/strapi/collections/article/service";
+
 const updated = await articleService.update("abc123xyz", {
   title: "Updated Title",
 });
@@ -130,11 +160,13 @@ const published = await articleService.update(
 );
 ```
 
-## Delete
+## delete
 
 Delete an entry.
 
 ```typescript
+import { articleService } from "@/strapi/collections/article/service";
+
 await articleService.delete("abc123xyz");
 ```
 
@@ -143,7 +175,7 @@ await articleService.delete("abc123xyz");
 Strapi supports powerful filtering operators:
 
 ```typescript
-const filtered = await articleService.find({
+const { data: filtered } = await articleService.findMany({
   filters: {
     // Equality
     status: "published",
@@ -188,7 +220,7 @@ Control which relations are loaded:
   <TabItem label="Simple">
     ```typescript
     // Array of relation names
-    const articles = await articleService.find({
+    const { data: articles } = await articleService.findMany({
       populate: ["author", "categories"],
     });
     ```
@@ -196,7 +228,7 @@ Control which relations are loaded:
   <TabItem label="Nested">
     ```typescript
     // Nested population
-    const articles = await articleService.find({
+    const { data: articles } = await articleService.findMany({
       populate: {
         author: {
           populate: ["avatar", "socialLinks"],
@@ -211,7 +243,7 @@ Control which relations are loaded:
   <TabItem label="Deep">
     ```typescript
     // Deep population with filters
-    const articles = await articleService.find({
+    const { data: articles } = await articleService.findMany({
       populate: {
         comments: {
           filters: { approved: true },
@@ -234,7 +266,7 @@ For content types with i18n enabled:
 
 ```typescript
 // Get content in specific locale
-const spanishArticles = await articleService.find({
+const { data: spanishArticles } = await articleService.findMany({
   locale: "es",
 });
 
@@ -250,12 +282,12 @@ For content types with draft/publish enabled:
 
 ```typescript
 // Get only published (default)
-const published = await articleService.find({
+const { data: published } = await articleService.findMany({
   status: "published",
 });
 
 // Get drafts
-const drafts = await articleService.find({
+const { data: drafts } = await articleService.findMany({
   status: "draft",
 });
 
@@ -291,16 +323,88 @@ try {
 
 ## Client Configuration
 
-Services use a shared client configured with your Strapi URL and token:
-
-```typescript
-// shared/client.ts (auto-generated)
-const client = createStrapiClient({
-  baseUrl: process.env.STRAPI_URL,
-  token: process.env.STRAPI_TOKEN,
-});
-```
+Services use a shared client configured with your Strapi URL and token from environment variables.
 
 <Aside type="tip">
   The client handles authentication, request formatting, and response parsing automatically.
 </Aside>
+
+## User Authentication (Beta)
+
+<Aside type="caution">
+  This feature is in **beta** and the API may change in future versions.
+</Aside>
+
+By default, services use `STRAPI_TOKEN` from your environment. For user-authenticated requests (e.g., after login), you can pass `clientOptions` to any service method:
+
+```typescript
+import { articleService } from "@/strapi/collections/article/service";
+
+// Default: uses STRAPI_TOKEN
+await articleService.findMany();
+
+// With user JWT token
+await articleService.findMany(
+  { filters: { author: userId } },
+  { authToken: session.jwt }
+);
+
+// Create as authenticated user
+await articleService.create(
+  { title: "My Post", content: "..." },
+  { authToken: userJwt }
+);
+
+// Update with user token
+await articleService.update(
+  "abc123",
+  { title: "Updated" },
+  { authToken: userJwt }
+);
+
+// Delete with user token
+await articleService.delete("abc123", { authToken: userJwt });
+```
+
+### ClientOptions
+
+All service methods accept an optional `clientOptions` parameter:
+
+```typescript
+interface ClientOptions {
+  /** JWT token or API token for authentication */
+  authToken?: string;
+  /** Base URL of the Strapi instance (for multi-tenant setups) */
+  baseURL?: string;
+}
+```
+
+### Creating a Reusable Client
+
+For multiple operations with the same token, create a client instance:
+
+```typescript
+import { createStrapiClient } from "@/strapi/shared/client";
+
+// Create client with user token
+const userClient = createStrapiClient({ authToken: session.jwt });
+
+// Use the client directly
+const articles = await userClient.collection("articles").find();
+const homepage = await userClient.single("homepage").find();
+```
+
+### Multi-tenant Setup
+
+For applications connecting to different Strapi instances:
+
+```typescript
+// Connect to a different Strapi instance
+await articleService.find(
+  {},
+  {
+    baseURL: "https://tenant-a.strapi.example.com",
+    authToken: tenantToken,
+  }
+);
+```

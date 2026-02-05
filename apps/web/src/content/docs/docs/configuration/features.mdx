@@ -31,6 +31,7 @@ features: {
 
 **Generated:**
 - Interfaces for collections, singles, and components
+- Interfaces for dynamic zones (discriminated unions)
 - Request/response types for API operations
 - Strapi system types (media, pagination, etc.)
 
@@ -59,7 +60,8 @@ features: {
 ```
 
 **Generated:**
-- `find()` - List with filters, pagination, sorting
+- `findMany()` - List with filters, pagination, sorting (returns paginated response)
+- `findAll()` - Fetch ALL entries (handles pagination automatically)
 - `findOne()` - Get by documentId
 - `create()` - Create new entry
 - `update()` - Update existing entry
@@ -68,11 +70,12 @@ features: {
 ```typescript
 // Generated service example
 export const articleService = {
-  find: (params?) => client.get('/articles', params),
-  findOne: (documentId, params?) => client.get(`/articles/${documentId}`, params),
-  create: (data, params?) => client.post('/articles', data, params),
-  update: (documentId, data, params?) => client.put(`/articles/${documentId}`, data, params),
-  delete: (documentId, params?) => client.delete(`/articles/${documentId}`, params),
+  findMany: (options?, clientOptions?) => /* returns { data, pagination } */,
+  findAll: (options?, clientOptions?) => /* returns all items, auto-paginated */,
+  findOne: (documentId, options?, clientOptions?) => /* returns single item */,
+  create: (data, clientOptions?) => /* creates and returns new item */,
+  update: (documentId, data, clientOptions?) => /* updates and returns item */,
+  delete: (documentId, clientOptions?) => /* deletes item */,
 };
 ```
 

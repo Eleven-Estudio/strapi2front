@@ -101,7 +101,7 @@ categories?: Category[];
 
 ## Media Fields
 
-Media fields use the `StrapiMedia` type:
+Media fields use the `StrapiMedia` type, which applies to **all media types** (images, videos, PDFs, documents, audio files, etc.):
 
 ```typescript
 export interface StrapiMedia {
@@ -110,20 +110,26 @@ export interface StrapiMedia {
   name: string;
   alternativeText: string | null;
   caption: string | null;
-  width: number | null;
-  height: number | null;
-  formats: StrapiMediaFormats | null;
+  width: number | null;    // null for non-image media
+  height: number | null;   // null for non-image media
+  formats: StrapiMediaFormats | null;  // null for non-image media
   url: string;
-  mime: string;
+  mime: string;  // e.g., "image/jpeg", "video/mp4", "application/pdf"
   size: number;
 }
 
-// Single media
-cover?: StrapiMedia;
+// Single media (any type)
+cover?: StrapiMedia;        // image
+attachment?: StrapiMedia;   // PDF, document, etc.
+video?: StrapiMedia;        // video file
 
 // Multiple media
-gallery?: StrapiMedia[];
+gallery?: StrapiMedia[];    // mix of any media types
 ```
+
+<Aside type="tip">
+  Check the `mime` property to determine the media type: images start with `image/`, videos with `video/`, PDFs are `application/pdf`, etc.
+</Aside>
 
 ## Enumeration Fields
 

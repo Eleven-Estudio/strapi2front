@@ -52,22 +52,38 @@ This guide will help you set up strapi2front and generate your first types and s
 
 3. **Configure your Strapi connection**
 
-   Edit `strapi.config.ts`:
+   The init command creates a `strapi.config.ts` with the full configuration:
 
    ```typescript
    import { defineConfig } from "strapi2front";
 
    export default defineConfig({
+     // Strapi connection
      url: process.env.STRAPI_URL || "http://localhost:1337",
      token: process.env.STRAPI_TOKEN,
+
+     // API prefix (default: "/api")
+     apiPrefix: "/api",
+
+     // Output format: "typescript" (.ts) or "jsdoc" (.js with JSDoc)
+     outputFormat: "typescript",
+
+     // Output configuration
      output: {
        path: "src/strapi",
      },
+
+     // Features to generate
      features: {
        types: true,
        services: true,
-       schemas: true,
+       actions: true,   // Astro actions (TypeScript only)
+       schemas: true,   // Zod validation schemas
+       upload: false,   // File upload helpers
      },
+
+     // Strapi version
+     strapiVersion: "v5",
    });
    ```
 
@@ -85,20 +101,25 @@ After running sync, you can import and use the generated code:
 
 ```typescript
 // Import the service for your content type
-import { articleService } from "@/strapi/collections/article";
+import { articleService } from "@/strapi/collections/article/service";
 
-// Fetch all articles
-const articles = await articleService.find();
+// Fetch articles with pagination
+const { data: articles, pagination } = await articleService.findMany({
+  pagination: { page: 1, pageSize: 10 },
+});
+
+// Fetch ALL articles (handles pagination automatically)
+const allArticles = await articleService.findAll();
 
 // Fetch with filters and relations
-const published = await articleService.find({
+const { data: published } = await articleService.findMany({
   filters: { publishedAt: { $notNull: true } },
   populate: ["author", "category"],
   sort: ["publishedAt:desc"],
 });
 
-// Get a single article
-const article = await articleService.findOne("documentId123");
+// Get a single article by documentId
+const article = await articleService.findOne("abc123xyz");
 
 // Create a new article
 const newArticle = await articleService.create({

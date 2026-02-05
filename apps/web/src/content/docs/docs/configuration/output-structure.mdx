@@ -19,30 +19,26 @@ output: {
 - src/strapi/
   - collections/
     - article/
-      - index.ts (exports)
       - types.ts
       - schemas.ts
       - service.ts
       - actions.ts
     - category/
-      - index.ts
       - types.ts
       - schemas.ts
       - service.ts
   - singles/
     - homepage/
-      - index.ts
       - types.ts
       - schemas.ts
       - service.ts
   - components/
-    - shared/
-      - seo/
-        - types.ts
+    - seo.ts
+    - hero.ts
   - shared/
+    - utils.ts
     - client.ts
     - locales.ts
-    - types.ts
 </FileTree>
 
 ### Benefits
@@ -55,14 +51,11 @@ output: {
 ## Import Examples
 
 ```typescript
-// Import everything from a content type
-import {
-  articleService,
-  type Article,
-  articleCreateSchema
-} from '@/strapi/collections/article';
-
-// Or import specific items
+// Import from specific files (no barrel exports)
 import { articleService } from '@/strapi/collections/article/service';
 import type { Article } from '@/strapi/collections/article/types';
+import { articleCreateSchema } from '@/strapi/collections/article/schemas';
+
+// Import multiple items from the same file
+import type { Article, ArticleCreateInput, ArticleUpdateInput } from '@/strapi/collections/article/types';
 ```
