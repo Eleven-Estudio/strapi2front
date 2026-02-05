@@ -1,6 +1,14 @@
 {
   "private": true,
   "author": "Eleven Estudio (https://github.com/elevenestudio)",
+  "homepage": "https://strapi2front.elevenestudio.com",
+  "contributors": [
+    {
+      "name": "Geovanny Gil",
+      "email": "esgeovannygil@gmail.com",
+      "url": "https://github.com/GeovannyGil"
+    }
+  ],
   "dependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/react": "4.4.2",
@@ -28,6 +36,11 @@
     "@types/react-dom": "19.1.8",
     "shiki": "^3.21.0",
     "typescript": "5.9.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eleven-Estudio/strapi2front",
+    "directory": "apps/web"
   },
   "license": "MIT",
   "name": "website",

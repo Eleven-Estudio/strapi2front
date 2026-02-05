@@ -36,6 +36,15 @@
     "node": ">=18.0.0"
   },
   "license": "MIT",
+  "author": "Eleven Estudio (https://github.com/elevenestudio)",
+  "homepage": "https://strapi2front.elevenestudio.com",
+  "contributors": [
+    {
+      "name": "Geovanny Gil",
+      "email": "esgeovannygil@gmail.com",
+      "url": "https://github.com/GeovannyGil"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/eleven-estudio/strapi2front.git",
