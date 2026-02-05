@@ -179,7 +179,8 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
         `Next steps:`,
         `  1. Run ${pc.cyan("npx strapi2front sync")} to generate files`,
         `  2. Import from ${pc.cyan(answers.outputDir + "/collections/*" + fileExt)}`,
-        `  3. Import services from ${pc.cyan(answers.outputDir + "/collections/*.service" + fileExt)}`,
+        "",
+        `Docs: ${pc.dim("https://strapi2front.dev/docs")}`,
       ].join("\n"),
       "Setup complete!"
     );
@@ -188,6 +189,7 @@ export async function initCommand(_options: InitCommandOptions): Promise<void> {
   } catch (error) {
     s.stop("Failed to create configuration files");
     logger.error(error instanceof Error ? error.message : "Unknown error");
+    logger.info(`Docs: ${pc.dim("https://strapi2front.dev/docs/installation")}`);
     process.exit(1);
   }
 }
