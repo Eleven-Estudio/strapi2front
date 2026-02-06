@@ -8,6 +8,7 @@ import TailwindIndicator from '@/components/tailwind-indicator.astro';
 import { Font } from 'astro:assets';
 import Footer from '@/components/globals/footer.astro';
 import GtmNoscript from '@/components/gtm-noscript.astro';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   metadata?: SEOProps;
@@ -23,6 +24,7 @@ const { metadata } = Astro.props;
     <Seo {...metadata} />
     <Favicons />
     <Font cssVariable="--font-geist" preload />
+    <Analytics />
     <style>
       body {
         font-family: var(--font-geist);
