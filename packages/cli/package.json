@@ -52,7 +52,8 @@
     "typescript",
     "codegen",
     "types",
-    "actions"
+    "actions",
+    "zod"
   ],
   "license": "MIT",
   "author": "Eleven Estudio (https://github.com/elevenestudio)",

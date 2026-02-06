@@ -1,9 +1,27 @@
 {
   "name": "strapi2front-monorepo",
   "version": "0.1.0",
-  "private": true,
   "description": "Generate TypeScript types, services, and framework actions from your Strapi schema",
   "type": "module",
+  "homepage": "https://strapi2front.elevenestudio.com",
+  "contributors": [
+    {
+      "name": "Geovanny Gil",
+      "email": "esgeovannygil@gmail.com",
+      "url": "https://github.com/GeovannyGil"
+    }
+  ],
+  "keywords": [
+    "strapi",
+    "cms",
+    "astro",
+    "nextjs",
+    "typescript",
+    "codegen",
+    "types",
+    "actions",
+    "zod"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
