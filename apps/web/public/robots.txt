@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: http://strapi2front.elevenestudio.com/sitemap-index.xml
+Sitemap: https://strapi2front.dev/sitemap-index.xml

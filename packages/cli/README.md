@@ -7,7 +7,7 @@
 
 Generate TypeScript types, services, Zod schemas, and Astro Actions from your Strapi schema.
 
-**[View Documentation →](https://strapi2front.elevenestudio.com/docs)**
+**[View Documentation →](https://strapi2front.dev/docs)**
 
 ---
 

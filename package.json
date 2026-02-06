@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Generate TypeScript types, services, and framework actions from your Strapi schema",
   "type": "module",
-  "homepage": "https://strapi2front.elevenestudio.com",
+  "homepage": "https://strapi2front.dev",
   "contributors": [
     {
       "name": "Geovanny Gil",

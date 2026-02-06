@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- Update documentation URLs to strapi2front.elevenestudio.com
+- Update documentation URLs to strapi2front.dev
 
 ## 0.5.1
 

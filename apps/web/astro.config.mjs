@@ -9,7 +9,7 @@ import starlightThemeRapide from 'starlight-theme-rapide'
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://strapi2front.elevenestudio.com',
+  site: 'https://strapi2front.dev',
   // Use to generate your sitemap and canonical URLs in your final build.
   integrations: [
     starlight({

@@ -231,7 +231,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
         ...generatedFiles.slice(0, 10).map((f) => `  ${pc.dim(path.relative(cwd, f))}`),
         generatedFiles.length > 10 ? `  ${pc.dim(`... and ${generatedFiles.length - 10} more`)}` : "",
         "",
-        `Docs: ${pc.dim("https://strapi2front.elevenestudio.com/docs")}`,
+        `Docs: ${pc.dim("https://strapi2front.dev/docs")}`,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -258,7 +258,7 @@ export async function syncCommand(options: SyncCommandOptions): Promise<void> {
       logger.error("An unknown error occurred");
     }
 
-    logger.info(`Docs: ${pc.dim("https://strapi2front.elevenestudio.com/docs")}`);
+    logger.info(`Docs: ${pc.dim("https://strapi2front.dev/docs")}`);
     process.exit(1);
   }
 }
