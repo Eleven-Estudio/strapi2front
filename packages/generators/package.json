@@ -1,6 +1,6 @@
 {
   "name": "@strapi2front/generators",
-  "version": "0.5.1",
+  "version": "0.5.3",
   "description": "Code generators for strapi2front",
   "type": "module",
   "exports": {

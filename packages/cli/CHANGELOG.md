@@ -1,5 +1,15 @@
 # strapi2front
 
+## 0.5.3
+
+### Patch Changes
+
+- c80f4b7: Migrate documentation URLs from strapi2front.elevenestudio.com to strapi2front.dev
+- Updated dependencies [c80f4b7]
+  - @strapi2front/core@0.5.3
+  - @strapi2front/generators@0.5.3
+  - @strapi2front/client@0.5.3
+
 ## 0.5.2
 
 ### Patch Changes
